@@ -5,6 +5,7 @@ import sys
 # TLS SAK imports
 from lib.connection import Connection_Exception
 from lib.connection.tcpsocket import Connection_TCP_Socket
+from lib.tls.tlsciphersuites import TLS_CipherSuite_Database
 from lib.tls.tlsconnection import TLS_Connection
 
 starttls_supported = ['smtp', 'ftp']
@@ -18,6 +19,7 @@ def client(args):
         with connection as c:
             tls_connection = TLS_Connection(c)
             tls_connection.setClientProtocolVersion('TLSv1.2')
+            tls_connection.setAvailableCipherSuites(TLS_CipherSuite_Database.getInstance().getAllCipherSuites())
             tls_connection.connect()
 
     except Connection_Exception as e:

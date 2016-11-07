@@ -1,5 +1,6 @@
 from lib.connection import Connection
 from lib.tls import TLS_VERSIONS
+from lib.tls.tlsparameter import TLS_CipherSuite
 from lib.tls.tlspkg import TLS_pkg_Handshake
 from lib.tls.tlspkg import TLS_Handshake_pkg_ClientHello
 from lib.tls.tlspkg import TLS_Handshake_pkg_ServerHello

@@ -3,15 +3,20 @@ import binascii
 from lib.tls.tlsexceptions import TLS_Exception
 
 class TLS_CipherSuite:
-    def __init__(self, cs_id):
+    def __init__(self, cs_id, name='unknown', protocol=None, kx=None, au=None, enc=None, bits=None, mac=None, ref=None):
         # validation
         if type(cs_id) is not bytes or len(cs_id) != 2:
-            cs_id_str = 'None'
-            if type(cs_id) is bytes:
-                cs_id_str = binascii.hexlify(cs_id)
             raise TLS_Exception('invalid cipher suite id: ' + cs_id_str)
 
         self.cs_id = cs_id
+        self.name = name
+        self.protocol = protocol
+        self.kx = kx
+        self.au = au
+        self.enc = enc
+        self.bits = bits
+        self.mac = mac
+        self.ref = ref
 
     def serialize(self):
         return self.cs_id

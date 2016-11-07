@@ -99,7 +99,11 @@ class TLS_Handshake_pkg(TLS_pkg):
 
 class TLS_Handshake_pkg_ClientHello(TLS_Handshake_pkg):
     PACKAGETYPE = b'\x01'
-    def __init__(self, version='TLSv1', timestamp=time.time(), random=b'\x00'*28, session_id=None, cipher_suites=None, compression_methods=None, extensions=None):
+    def __init__(self, version='TLSv1', timestamp=int(time.time()), random=b'\x00'*28, session_id=None, cipher_suites=None, compression_methods=None, extensions=None):
+        # validate content
+        if session_id is None:
+            session_id = b''
+
         self.version = version
         self.timestamp = timestamp
         self.random = random
@@ -108,13 +112,11 @@ class TLS_Handshake_pkg_ClientHello(TLS_Handshake_pkg):
         self.compression_methods = compression_methods
         self.extensions = extensions
 
-        # validate content
-        if session_id is None:
-            session_id = b''
-
     def serialize(self):
         if self.version not in TLS_VERSIONS:
             raise TLS_Exception('invalid version of protocol in client hello package')
+        if type(self.timestamp) is not int:
+            raise TLS_Exception('invalid timestamp type in client hello package')
         if len(self.random) != 28:
             raise TLS_Exception('invalid length of random number in client hello package')
         #TODO: validity check of session_id
@@ -250,7 +252,11 @@ class TLS_Handshake_pkg_ClientHello(TLS_Handshake_pkg):
 
 class TLS_Handshake_pkg_ServerHello(TLS_Handshake_pkg):
     PACKAGETYPE = b'\x02'
-    def __init__(self, version='TLSv1', timestamp=time.time(), random=b'\x00'*28, session_id=None, cipher_suite=None, compression_method=None, extensions=None):
+    def __init__(self, version='TLSv1', timestamp=int(time.time()), random=b'\x00'*28, session_id=None, cipher_suite=None, compression_method=None, extensions=None):
+        # validate content
+        if session_id is None:
+            session_id = b''
+
         self.version = version
         self.timestamp = timestamp
         self.random = random
@@ -259,13 +265,11 @@ class TLS_Handshake_pkg_ServerHello(TLS_Handshake_pkg):
         self.compression_method = compression_method
         self.extensions = extensions
 
-        # validate content
-        if session_id is None:
-            session_id = b''
-
     def serialize(self):
         if self.version not in TLS_VERSIONS:
             raise TLS_Exception('invalid version of protocol in server hello package')
+        if type(self.timestamp) is not int:
+            raise TLS_Exception('invalid timestamp type in server hello package')
         if len(self.random) != 28:
             raise TLS_Exception('invalid length of random number in server hello package')
         #TODO: validity check of session_id
