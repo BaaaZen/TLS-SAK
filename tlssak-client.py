@@ -6,6 +6,7 @@ import sys
 from lib.connection import Connection_Exception
 from lib.connection.tcpsocket import Connection_TCP_Socket
 from lib.tls.tlsciphersuites import TLS_CipherSuite_Database
+from lib.tls.tlscompressionmethods import TLS_CompressionMethod_Database
 from lib.tls.tlsconnection import TLS_Connection
 
 starttls_supported = ['smtp', 'ftp']
@@ -16,11 +17,22 @@ def client(args):
 
     # connect and test
     try:
-        with connection as c:
-            tls_connection = TLS_Connection(c)
-            tls_connection.setClientProtocolVersion('TLSv1.2')
-            tls_connection.setAvailableCipherSuites(TLS_CipherSuite_Database.getInstance().getAllCipherSuites())
-            tls_connection.connect()
+        cipher_suites = TLS_CipherSuite_Database.getInstance().getAllCipherSuites()
+        while True:
+            with connection:
+                tls_connection = TLS_Connection(connection)
+                tls_connection.setClientProtocolVersion('TLSv1.2')
+                tls_connection.setAvailableCipherSuites(cipher_suites)
+                tls_connection.setAvailableCompressionMethods(TLS_CompressionMethod_Database.getInstance().getAllCompressionMethods())
+                tls_connection.connect()
+
+                chosen_cipher_suite = tls_connection.getChosenCipherSuite()
+
+                # output result
+                print(chosen_cipher_suite.name)
+
+                # TODO: this is just a workaround, we need to use the same instances for the same cipher suite
+                cipher_suites = [x for x in cipher_suites if x.cs_id != chosen_cipher_suite.cs_id]
 
     except Connection_Exception as e:
         print('Error while connecting: ' + str(e))

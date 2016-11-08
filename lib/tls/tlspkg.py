@@ -1,9 +1,17 @@
+import binascii
 import struct
 import time
 
 from lib.tls import TLS_VERSIONS
-from lib.tls.tlsexceptions import TLS_Exception, TLS_Malformed_Package_Exception, TLS_Parser_Exception
-from lib.tls.tlsparameter import TLS_CipherSuite, TLS_CompressionMethod, TLS_Extension
+from lib.tls.tlsciphersuites import TLS_CipherSuite_Database
+from lib.tls.tlscompressionmethods import TLS_CompressionMethod_Database
+from lib.tls.tlsexceptions import TLS_Exception
+from lib.tls.tlsexceptions import TLS_Malformed_Package_Exception
+from lib.tls.tlsexceptions import TLS_Parser_Exception
+from lib.tls.tlsparameter import TLS_Certificate
+from lib.tls.tlsparameter import TLS_CipherSuite
+from lib.tls.tlsparameter import TLS_CompressionMethod
+from lib.tls.tlsparameter import TLS_Extension
 
 class TLS_pkg():
     def __init__(self):
@@ -21,20 +29,28 @@ class TLS_pkg():
         else:
             return len(self.serialize())
 
+    def setParseSize(self, size):
+        self.parseSize = size
+
     @staticmethod
     def parser_assert_len(buffer, length):
         if type(buffer) is not bytes:
             raise TLS_Exception('invalid type of buffer for parser: bytes required!')
         if len(buffer) < length:
-            raise TLS_Parser_Exception('buffer too short: ' + len(buffer) + ' < ' + length)
+            raise TLS_Parser_Exception('buffer too short: ' + str(len(buffer)) + ' < ' + str(length))
 
     @staticmethod
-    def parse(buffer):
+    def parser(buffer):
+        if buffer is None:
+            return None
+        if type(buffer) is not bytes:
+            raise TLS_Exception('parser error: buffer has to be bytes')
+
         TLS_pkg.parser_assert_len(buffer, 1)
         if buffer[0:1] == TLS_pkg_Handshake.PACKAGETYPE:
             return TLS_pkg_Handshake().parse(buffer)
         else:
-            raise TLS_Exception('unknown TLS package type: ' + binascii.hexlify(buffer[0:1]))
+            raise TLS_Exception('unknown TLS package type: ' + binascii.hexlify(buffer[0:1]).decode('utf-8'))
 
 
 class TLS_pkg_Handshake(TLS_pkg):
@@ -65,15 +81,18 @@ class TLS_pkg_Handshake(TLS_pkg):
 
         # get version
         version = buffer[1:3]
-        self.version = 'unknown (' + binascii.hexlify(version) + ')'
+        self.version = 'unknown (' + binascii.hexlify(version).decode('utf-8') + ')'
         for v in TLS_VERSIONS:
             if TLS_VERSIONS[v] == version:
                 self.version = v
                 break
 
         # size of content
-        hs_size = struct.unpack('!H', buffer[3:5])
+        [hs_size] = struct.unpack('!H', buffer[3:5])
         self.parser_assert_len(buffer, 5 + hs_size)
+
+        # set parse size
+        self.setParseSize(5 + hs_size)
 
         # valid size of content?
         if hs_size < 1:
@@ -82,16 +101,22 @@ class TLS_pkg_Handshake(TLS_pkg):
 
         # fetch and parse content
         hs_content = buffer[5:5+hs_size]
-        if hs_content[0:1] == TLS_pkg_Handshake_ClientHello.PACKAGETYPE:
-            self.handshake = TLS_pkg_Handshake_ClientHello()
-        elif hs_content[0:1] == TLS_pkg_Handshake_ServerHello.PACKAGETYPE:
-            self.handshake = TLS_pkg_Handshake_ServerHello()
-        elif hs_content[0:1] == TLS_pkg_Handshake_Certificate.PACKAGETYPE:
-            self.handshake = TLS_pkg_Handshake_Certificate()
+        if hs_content[0:1] == TLS_Handshake_pkg_ClientHello.PACKAGETYPE:
+            self.handshake = TLS_Handshake_pkg_ClientHello()
+        elif hs_content[0:1] == TLS_Handshake_pkg_ServerHello.PACKAGETYPE:
+            self.handshake = TLS_Handshake_pkg_ServerHello()
+        elif hs_content[0:1] == TLS_Handshake_pkg_Certificate.PACKAGETYPE:
+            self.handshake = TLS_Handshake_pkg_Certificate()
+        elif hs_content[0:1] == TLS_Handshake_pkg_ServerKeyExchange.PACKAGETYPE:
+            self.handshake = TLS_Handshake_pkg_ServerKeyExchange()
+        elif hs_content[0:1] == TLS_Handshake_pkg_ServerHelloDone.PACKAGETYPE:
+            self.handshake = TLS_Handshake_pkg_ServerHelloDone()
         else:
             raise TLS_Exception('unknown TLS handshake package type: ' + binascii.hexlify(hs_content[0:1]))
 
         self.handshake.parse(hs_content)
+
+        return self
 
 
 class TLS_Handshake_pkg(TLS_pkg):
@@ -174,7 +199,7 @@ class TLS_Handshake_pkg_ClientHello(TLS_Handshake_pkg):
         add_size = 0
 
         # fetch size of ClientHello package
-        pkg_size = struct.unpack('!I', b'\x00' + buffer[1:4])
+        [pkg_size] = struct.unpack('!I', b'\x00' + buffer[1:4])
         self.parser_assert_len(buffer, 4 + pkg_size)
         pkg_content = buffer[4:4+pkg_size]
 
@@ -191,11 +216,11 @@ class TLS_Handshake_pkg_ClientHello(TLS_Handshake_pkg):
                 break
 
         # fetch timestamp and random
-        self.timestamp = struct.unpack('!I', pkg_content[2:6])
+        [self.timestamp] = struct.unpack('!I', pkg_content[2:6])
         self.random = pkg_content[6:34]
 
         # fetch session id size
-        sid_size = struct.unpack('!B', pkg_content[34:35])
+        [sid_size] = struct.unpack('!B', pkg_content[34:35])
         add_size += sid_size
 
         # pkg_size valid?
@@ -206,7 +231,7 @@ class TLS_Handshake_pkg_ClientHello(TLS_Handshake_pkg):
         self.session_id = pkg_content[35:35+sid_size]
 
         # fetch size of cipher suites
-        cs_size = struct.unpack('!H', pkg_content[35+sid_size:35+sid_size+2])
+        [cs_size] = struct.unpack('!H', pkg_content[35+sid_size:35+sid_size+2])
         add_size += cs_size
 
         # validate cipher suite size
@@ -223,7 +248,7 @@ class TLS_Handshake_pkg_ClientHello(TLS_Handshake_pkg):
             self.cipher_suites += [TLS_CipherSuite(pkg_content[35+sid_size+2+i:35+sid_size+2+i+2])]
 
         # fetch size of compression methods
-        cm_size = struct.unpack('!B', pkg_content[35+sid_size+2+cs_size:35+sid_size+2+cs_size+1])
+        [cm_size] = struct.unpack('!B', pkg_content[35+sid_size+2+cs_size:35+sid_size+2+cs_size+1])
         add_size += cm_size
 
         # pkg_size valid?
@@ -240,7 +265,7 @@ class TLS_Handshake_pkg_ClientHello(TLS_Handshake_pkg):
         if pkg_size < 38 + add_size + 2:
             return
 
-        ext_size = struct.unpack('!H', pkg_content[35+sid_size+2+cs_size+1+cm_size:35+sid_size+2+cs_size+1+cm_size+2])
+        [ext_size] = struct.unpack('!H', pkg_content[35+sid_size+2+cs_size+1+cm_size:35+sid_size+2+cs_size+1+cm_size+2])
         add_size += ext_size
 
         # pkg_size valid?
@@ -317,7 +342,7 @@ class TLS_Handshake_pkg_ServerHello(TLS_Handshake_pkg):
         add_size = 0
 
         # fetch size of ServerHello package
-        pkg_size = struct.unpack('!I', b'\x00' + buffer[1:4])
+        [pkg_size] = struct.unpack('!I', b'\x00' + buffer[1:4])
         self.parser_assert_len(buffer, 4 + pkg_size)
         pkg_content = buffer[4:4+pkg_size]
 
@@ -327,18 +352,18 @@ class TLS_Handshake_pkg_ServerHello(TLS_Handshake_pkg):
 
         # fetch SSL/TLS version
         version = pkg_content[0:2]
-        self.version = 'unknown (' + binascii.hexlify(version) + ')'
+        self.version = 'unknown (' + binascii.hexlify(version).decode('utf-8') + ')'
         for v in TLS_VERSIONS:
             if TLS_VERSIONS[v] == version:
                 self.version = v
                 break
 
         # fetch timestamp and random
-        self.timestamp = struct.unpack('!I', pkg_content[2:6])
+        [self.timestamp] = struct.unpack('!I', pkg_content[2:6])
         self.random = pkg_content[6:34]
 
         # fetch session id size
-        sid_size = struct.unpack('!B', pkg_content[34:35])
+        [sid_size] = struct.unpack('!B', pkg_content[34:35])
         add_size += sid_size
 
         # pkg_size valid?
@@ -349,17 +374,17 @@ class TLS_Handshake_pkg_ServerHello(TLS_Handshake_pkg):
         self.session_id = pkg_content[35:35+sid_size]
 
         # fetch cipher suite
-        self.cipher_suite = TLS_CipherSuite(pkg_content[35+sid_size:35+sid_size+2])
+        self.cipher_suite = TLS_CipherSuite_Database.getInstance().getCipherSuite(pkg_content[35+sid_size:35+sid_size+2])
 
         # fetch compression method
-        self.compression_method = TLS_CompressionMethod(pkg_content[35+sid_size+2:35+sid_size+3])
+        self.compression_method = TLS_CompressionMethod_Database.getInstance().getCompressionMethod(pkg_content[35+sid_size+2:35+sid_size+3])
 
         # (optional) fetch size of extensions
         self.extensions = []
         if pkg_size < 38 + add_size + 2:
             return
 
-        ext_size = struct.unpack('!H', pkg_content[35+sid_size+3:35+sid_size+5])
+        [ext_size] = struct.unpack('!H', pkg_content[35+sid_size+3:35+sid_size+5])
         add_size += ext_size
 
         # pkg_size valid?
@@ -403,7 +428,7 @@ class TLS_Handshake_pkg_Certificate(TLS_Handshake_pkg):
         self.parser_assert_len(buffer, 4)
 
         # fetch size of Certificate package
-        pkg_size = struct.unpack('!I', b'\x00' + buffer[1:4])
+        [pkg_size] = struct.unpack('!I', b'\x00' + buffer[1:4])
         self.parser_assert_len(buffer, 4 + pkg_size)
         pkg_content = buffer[4:4+pkg_size]
 
@@ -417,7 +442,7 @@ class TLS_Handshake_pkg_Certificate(TLS_Handshake_pkg):
                 raise TLS_Parser_Exception('invalid size of certificate list in certificate package')
 
             # size of next certificate
-            crt_size = struct.unpack('!I', b'\x00' + pkg_content[pos:pos+3])
+            [crt_size] = struct.unpack('!I', b'\x00' + pkg_content[pos:pos+3])
             if pos + 3 + crt_size > pkg_size:
                 raise TLS_Parser_Exception('invalid size descriptor for certificate list in certificate package')
 
@@ -426,3 +451,54 @@ class TLS_Handshake_pkg_Certificate(TLS_Handshake_pkg):
 
             # increase pointer
             pos += 3 + crt_size
+
+class TLS_Handshake_pkg_ServerKeyExchange(TLS_Handshake_pkg):
+    PACKAGETYPE = b'\x0c'
+    def __init__(self):
+        # TODO: implement
+        pass
+
+    def serialize(self):
+        raise TLS_Not_Implemented_Exception('handshake: server key exchange')
+
+        #  1 byte   handshake type      (0x0c = ServerKeyExchange)
+        #  3 bytes  size in bytes of ServerKeyExchange package
+        #  ... (not implemented - unknown ATM)
+
+        # create empty package
+        return self.PACKAGETYPE + b'\x00\x00\x00'
+
+    def parse(self, buffer):
+        self.parser_assert_len(buffer, 4)
+
+        # fetch size of ServerKeyExchange package
+        [pkg_size] = struct.unpack('!I', b'\x00' + buffer[1:4])
+        self.parser_assert_len(buffer, 4 + pkg_size)
+        pkg_content = buffer[4:4+pkg_size]
+
+        # TODO: not implemented yet
+
+
+class TLS_Handshake_pkg_ServerHelloDone(TLS_Handshake_pkg):
+    PACKAGETYPE = b'\x0e'
+    def __init__(self):
+        # TODO: implement
+        pass
+
+    def serialize(self):
+        #  1 byte   handshake type      (0x0e = ServerHelloDone)
+        #  3 bytes  size in bytes of ServerHelloDone package
+        #  ... (not implemented - unknown ATM)
+
+        # create empty package
+        return self.PACKAGETYPE + b'\x00\x00\x00'
+
+    def parse(self, buffer):
+        self.parser_assert_len(buffer, 4)
+
+        # fetch size of ServerHelloDone package
+        [pkg_size] = struct.unpack('!I', b'\x00' + buffer[1:4])
+        self.parser_assert_len(buffer, 4 + pkg_size)
+        pkg_content = buffer[4:4+pkg_size]
+
+        # TODO: not implemented yet

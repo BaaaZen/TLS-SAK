@@ -1,15 +1,24 @@
 from lib.connection import Connection
 from lib.tls import TLS_VERSIONS
 from lib.tls.tlsparameter import TLS_CipherSuite
+from lib.tls.tlsparameter import TLS_CompressionMethod
+from lib.tls.tlspkg import TLS_pkg
 from lib.tls.tlspkg import TLS_pkg_Handshake
+from lib.tls.tlspkg import TLS_Handshake_pkg_Certificate
 from lib.tls.tlspkg import TLS_Handshake_pkg_ClientHello
 from lib.tls.tlspkg import TLS_Handshake_pkg_ServerHello
-from lib.tls.tlspkg import TLS_Handshake_pkg_Certificate
+from lib.tls.tlspkg import TLS_Handshake_pkg_ServerHelloDone
+from lib.tls.tlspkg import TLS_Handshake_pkg_ServerKeyExchange
 from lib.tls.tlsexceptions import TLS_Exception
+from lib.tls.tlsexceptions import TLS_Parser_Exception
 
 class TLS_Connection:
     def __init__(self, connection):
+        if not issubclass(type(connection), Connection):
+            raise TLS_Exception('connection has to be of type Connection for TLS connection')
+
         self.connection = connection
+        self.buffer = b''
         self.cipher_suites = []
         self.compression_methods = []
         self.state = None
@@ -47,24 +56,48 @@ class TLS_Connection:
 
     # ---- connection property getters ----
     def getChosenCipherSuite(self):
-        if has_attr(self, 'cipher_suite') and self.cipher_suite is not None:
+        if hasattr(self, 'cipher_suite') and self.cipher_suite is not None:
             return self.cipher_suite
         return None
 
     def getChosenCompressionMethod(self):
-        if has_attr(self, 'compression_method') and self.compression_method is not None:
+        if hasattr(self, 'compression_method') and self.compression_method is not None:
             return self.compression_method
         return None
 
     def getServerProtocolVersion(self):
-        if has_attr(self, 'server_protocol_version') and self.server_protocol_version is not None:
+        if hasattr(self, 'server_protocol_version') and self.server_protocol_version is not None:
             return self.server_protocol_version
         return None
 
+    # ---- internal methods ----
+    def _readBuffer(self):
+        buffer = self.connection.recv()
+        self.buffer += buffer
 
-    # ---- active state machine ----
+    def _readPackage(self):
+        while True:
+            try:
+                pkg = TLS_pkg.parser(self.buffer)
+                self.buffer = self.buffer[pkg.size():]
+                return pkg
+            except TLS_Parser_Exception as e:
+                self._readBuffer()
+
+    # ---- state machine ----
     def connect(self):
         client_hello = TLS_Handshake_pkg_ClientHello(version=self.client_protocol_version, cipher_suites=self.cipher_suites, compression_methods=self.compression_methods)
-        handshake = TLS_pkg_Handshake(self.client_protocol_version, client_hello)
-        print(str(handshake.serialize()))
-        pass
+        handshake_client_hello = TLS_pkg_Handshake(self.client_protocol_version, client_hello)
+        self.connection.send(handshake_client_hello.serialize())
+
+        while True:
+            pkg = self._readPackage()
+            if type(pkg) is not TLS_pkg_Handshake:
+                raise TLS_Protocol_Exception('handshake package excepted, but received other package')
+
+            if type(pkg.handshake) is TLS_Handshake_pkg_ServerHello:
+                self.cipher_suite = pkg.handshake.cipher_suite
+                self.compression_method = pkg.handshake.compression_method
+                self.server_protocol_version = pkg.handshake.version
+            elif type(pkg.handshake) is TLS_Handshake_pkg_ServerHelloDone:
+                break
