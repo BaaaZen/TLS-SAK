@@ -47,10 +47,111 @@ class TLS_pkg():
             raise TLS_Exception('parser error: buffer has to be bytes')
 
         TLS_pkg.parser_assert_len(buffer, 1)
-        if buffer[0:1] == TLS_pkg_Handshake.PACKAGETYPE:
+        if buffer[0:1] == TLS_pkg_Alert.PACKAGETYPE:
+            return TLS_pkg_Alert().parse(buffer)
+        elif buffer[0:1] == TLS_pkg_Handshake.PACKAGETYPE:
             return TLS_pkg_Handshake().parse(buffer)
         else:
             raise TLS_Exception('unknown TLS package type: ' + binascii.hexlify(buffer[0:1]).decode('utf-8'))
+
+
+class TLS_pkg_Alert(TLS_pkg):
+    PACKAGETYPE = b'\x15'
+    LEVELS = {b'\x01': 'warning', b'\x02': 'fatal'}
+    DESCRIPTIONS = {b'\x00': 'close_notify', b'\x0a': 'unexpected_message', b'\x14': 'bad_record_mac', \
+                    b'\x15': 'decryption_failed', b'\x16': 'record_overflow', b'\x1e': 'decompression_failure', \
+                    b'\x28': 'handshake_failure', b'\x29': 'no_certificate_RESERVED', b'\x2a': 'bad_certificate', \
+                    b'\x2b': 'unsupported_certificate', b'\x2c': 'certificate_revoked', b'\x2d': 'certificate_expired', \
+                    b'\x2e': 'certificate_unknown', b'\x2f': 'illegal_parameter', b'\x30': 'unknown_ca', \
+                    b'\x31': 'access_denied', b'\x32': 'decode_error', b'\x33': 'decrypt_error', \
+                    b'\x3c': 'export_restriction_RESERVED', b'\x46': 'protocol_version', b'\x47': 'insufficient_security', \
+                    b'\x50': 'internal_error', b'\x5a': 'user_canceled', b'\x64': 'no_renegotiation'}
+
+    def __init__(self, version='TLSv1', level=b'\x01', description=b'\x50'):
+        self.version = version
+
+        # validation
+        if type(level) is bytes:
+            self.level = level
+        else:
+            self.level = b'\x01'
+            for k in self.LEVELS:
+                if level == self.LEVELS[k]:
+                    self.level = k
+                    break
+
+        if type(description) is bytes:
+            self.description = description
+        else:
+            self.description = b'\x50'
+            for k in self.DESCRIPTIONS:
+                if description == self.DESCRIPTIONS[k]:
+                    self.description = k
+                    break
+
+    def getLevel(self):
+        if type(self.level) is not bytes:
+            raise TLS_Exception('invalid alert level')
+        if self.level in self.LEVELS:
+            return self.LEVELS[self.level]
+        else:
+            return 'unknown (' + binascii.hexlify(self.level).decode('utf-8') + ')'
+
+    def getDescription(self):
+        if type(self.description) is not bytes:
+            raise TLS_Exception('invalid alert description')
+        if self.description in self.DESCRIPTIONS:
+            return self.DESCRIPTIONS[self.description]
+        else:
+            return 'unknown (' + binascii.hexlify(self.description).decode('utf-8') + ')'
+
+    def serialize(self):
+        if self.version not in TLS_VERSIONS:
+            raise TLS_Exception('invalid TLS version for alert package')
+        if type(self.level) is not bytes and len(self.level) != 1:
+            raise TLS_Exception('invalid alert level size for alert package')
+        if type(self.description) is not bytes and len(self.description) != 1:
+            raise TLS_Exception('invalid alert description size for alert package')
+
+        al_content = self.level + self.description
+        al_size = struct.pack('!H', len(al_content))
+
+        #  1 byte   package type        (0x15 = Alert)
+        #  2 bytes  SSL/TLS version     (0x0301 = SSL 3.1 = TLS 1.0)
+        #  2 bytes  size in bytes of alert package
+        #  1 byte   alert level
+        #  1 byte   alert description
+
+        return self.PACKAGETYPE + TLS_VERSIONS[self.version] + al_size + al_content
+
+    def parse(self, buffer):
+        self.parser_assert_len(buffer, 5)
+
+        # get version
+        version = buffer[1:3]
+        self.version = 'unknown (' + binascii.hexlify(version).decode('utf-8') + ')'
+        for v in TLS_VERSIONS:
+            if TLS_VERSIONS[v] == version:
+                self.version = v
+                break
+
+        # size of content
+        [al_size] = struct.unpack('!H', buffer[3:5])
+        self.parser_assert_len(buffer, 5 + al_size)
+
+        # set parse size
+        self.setParseSize(5 + al_size)
+
+        # valid size of content?
+        if al_size != 2:
+            raise TLS_Malformed_Package_Exception('alert package has size ' + str(al_size) + ' instead of 2')
+
+        # fetch and parse content
+        al_content = buffer[5:5+al_size]
+        self.level = al_content[0:1]
+        self.description = al_content[1:2]
+
+        return self
 
 
 class TLS_pkg_Handshake(TLS_pkg):
@@ -388,8 +489,8 @@ class TLS_Handshake_pkg_ServerHello(TLS_Handshake_pkg):
         add_size += ext_size
 
         # pkg_size valid?
-        if pkg_size < 40 + add_size:
-            raise TLS_Malformed_Package_Exception('size of ServerHello package content smaller than minimum for a valid package: ' + pkg_size + ' instead of ' + str(40 + add_size))
+        if pkg_size < 38 + add_size + 2:
+            raise TLS_Malformed_Package_Exception('size of ServerHello package content smaller than minimum for a valid package: ' + pkg_size + ' instead of ' + str(38 + add_size + 2))
 
         # TODO: fetch extensions
 

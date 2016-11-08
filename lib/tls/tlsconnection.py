@@ -3,14 +3,17 @@ from lib.tls import TLS_VERSIONS
 from lib.tls.tlsparameter import TLS_CipherSuite
 from lib.tls.tlsparameter import TLS_CompressionMethod
 from lib.tls.tlspkg import TLS_pkg
+from lib.tls.tlspkg import TLS_pkg_Alert
 from lib.tls.tlspkg import TLS_pkg_Handshake
 from lib.tls.tlspkg import TLS_Handshake_pkg_Certificate
 from lib.tls.tlspkg import TLS_Handshake_pkg_ClientHello
 from lib.tls.tlspkg import TLS_Handshake_pkg_ServerHello
 from lib.tls.tlspkg import TLS_Handshake_pkg_ServerHelloDone
 from lib.tls.tlspkg import TLS_Handshake_pkg_ServerKeyExchange
+from lib.tls.tlsexceptions import TLS_Alert_Exception
 from lib.tls.tlsexceptions import TLS_Exception
 from lib.tls.tlsexceptions import TLS_Parser_Exception
+from lib.tls.tlsexceptions import TLS_Protocol_Exception
 
 class TLS_Connection:
     def __init__(self, connection):
@@ -92,7 +95,9 @@ class TLS_Connection:
 
         while True:
             pkg = self._readPackage()
-            if type(pkg) is not TLS_pkg_Handshake:
+            if type(pkg) is TLS_pkg_Alert:
+                raise TLS_Alert_Exception(pkg.getLevel(), pkg.getDescription())
+            elif type(pkg) is not TLS_pkg_Handshake:
                 raise TLS_Protocol_Exception('handshake package excepted, but received other package')
 
             if type(pkg.handshake) is TLS_Handshake_pkg_ServerHello:

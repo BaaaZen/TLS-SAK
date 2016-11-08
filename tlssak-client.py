@@ -9,6 +9,7 @@ from lib.tls import TLS_VERSIONS
 from lib.tls.tlsciphersuites import TLS_CipherSuite_Database
 from lib.tls.tlscompressionmethods import TLS_CompressionMethod_Database
 from lib.tls.tlsconnection import TLS_Connection
+from lib.tls.tlsexceptions import TLS_Alert_Exception
 
 starttls_supported = ['smtp', 'ftp']
 
@@ -34,6 +35,9 @@ def client(args):
 
                 # TODO: this is just a workaround, we need to use the same instances for the same cipher suite
                 cipher_suites = [x for x in cipher_suites if x.cs_id != chosen_cipher_suite.cs_id]
+    except TLS_Alert_Exception as e:
+        if e.description != 'handshake_failure':
+            print(str(e))
 
     except Connection_Exception as e:
         print('Error while connecting: ' + str(e))
