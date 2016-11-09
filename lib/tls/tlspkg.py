@@ -221,6 +221,8 @@ class TLS_pkg_Handshake(TLS_pkg):
                     hs = TLS_Handshake_pkg_Certificate()
                 elif hs_content[hs_pos:hs_pos+1] == TLS_Handshake_pkg_ServerKeyExchange.PACKAGETYPE:
                     hs = TLS_Handshake_pkg_ServerKeyExchange()
+                elif hs_content[hs_pos:hs_pos+1] == TLS_Handshake_pkg_CertificateRequest.PACKAGETYPE:
+                    hs = TLS_Handshake_pkg_CertificateRequest()
                 elif hs_content[hs_pos:hs_pos+1] == TLS_Handshake_pkg_ServerHelloDone.PACKAGETYPE:
                     hs = TLS_Handshake_pkg_ServerHelloDone()
                 else:
@@ -597,6 +599,36 @@ class TLS_Handshake_pkg_ServerKeyExchange(TLS_Handshake_pkg):
         self.parser_assert_len(buffer, 4)
 
         # fetch size of ServerKeyExchange package
+        [pkg_size] = struct.unpack('!I', b'\x00' + buffer[1:4])
+        self.parser_assert_len(buffer, 4 + pkg_size)
+        pkg_content = buffer[4:4+pkg_size]
+
+        # set parse size
+        self.setParseSize(4 + pkg_size)
+
+        # TODO: not implemented yet
+
+
+class TLS_Handshake_pkg_CertificateRequest(TLS_Handshake_pkg):
+    PACKAGETYPE = b'\x0d'
+    def __init__(self):
+        # TODO: implement
+        pass
+
+    def serialize(self):
+        raise TLS_Not_Implemented_Exception('handshake: certificate request')
+
+        #  1 byte   handshake type      (0x0d = CertificateRequest)
+        #  3 bytes  size in bytes of CertificateRequest package
+        #  ... (not implemented - unknown ATM)
+
+        # create empty package
+        return self.PACKAGETYPE + b'\x00\x00\x00'
+
+    def parse(self, buffer):
+        self.parser_assert_len(buffer, 4)
+
+        # fetch size of CertificateRequest package
         [pkg_size] = struct.unpack('!I', b'\x00' + buffer[1:4])
         self.parser_assert_len(buffer, 4 + pkg_size)
         pkg_content = buffer[4:4+pkg_size]
