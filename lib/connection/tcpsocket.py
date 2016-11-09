@@ -21,6 +21,7 @@ class Connection_TCP_Socket(Connection):
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.host, self.port))
+            #self.socket.settimeout(10)
         except socket.gaierror as e:
             raise Connection_Exception(e)
         except TimeoutError as e:
@@ -41,4 +42,7 @@ class Connection_TCP_Socket(Connection):
         if self.socket is None:
             raise Connection_Exception('not connected')
 
-        return self.socket.recv(4096)
+        data = self.socket.recv(4096)
+        if data is None or len(data) < 1:
+            raise Connection_Exception('no data received from socket')
+        return data
