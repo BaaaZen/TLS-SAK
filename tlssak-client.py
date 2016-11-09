@@ -4,6 +4,8 @@ import sys
 
 # TLS SAK imports
 from lib.connection import Connection_Exception
+from lib.connection.starttls import Connection_STARTTLS_FTP
+from lib.connection.starttls import Connection_STARTTLS_SMTP
 from lib.connection.tcpsocket import Connection_TCP_Socket
 from lib.tls import TLS_VERSIONS
 from lib.tls.tlsciphersuites import TLS_CipherSuite_Database
@@ -15,7 +17,12 @@ starttls_supported = ['smtp', 'ftp']
 
 def client(args):
     # create connection object
-    connection = Connection_TCP_Socket(args.host, args.port)
+    if args.starttls == 'ftp':
+        connection = Connection_STARTTLS_FTP(args.host, args.port)
+    elif args.starttls == 'smtp':
+        connection = Connection_STARTTLS_SMTP(args.host, args.port)
+    else:
+        connection = Connection_TCP_Socket(args.host, args.port)
 
     # connect and test
     try:
