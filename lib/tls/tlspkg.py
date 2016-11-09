@@ -159,15 +159,23 @@ class TLS_pkg_Handshake(TLS_pkg):
 
     def __init__(self, version='TLSv1', handshake=None):
         self.version = version
-        self.handshake = handshake
+        if type(handshake) is list:
+            self.handshake = handshake
+        else:
+            self.handshake = [handshake]
 
     def serialize(self):
-        if self.handshake is None or not issubclass(type(self.handshake), TLS_Handshake_pkg):
-            raise TLS_Exception('missing handshake content in handshake package')
+        if type(self.handshake) is not list:
+            raise TLS_Exception('handshake content is not a list in handshake package')
+        for hs in self.handshake:
+            if not issubclass(type(hs), TLS_Handshake_pkg):
+                raise TLS_Exception('invalid handshake item in handshake package')
         if self.version not in TLS_VERSIONS:
             raise TLS_Exception('invalid version of handshake for handshake package')
 
-        hs_content = self.handshake.serialize()
+        hs_content = b''
+        for hs in self.handshake:
+            hs_content += hs.serialize()
         hs_size = struct.pack('!H', len(hs_content))
 
         #  1 byte   package type        (0x16 = Handshake)
@@ -196,26 +204,33 @@ class TLS_pkg_Handshake(TLS_pkg):
         self.setParseSize(5 + hs_size)
 
         # valid size of content?
+        self.handshake = []
         if hs_size < 1:
-            self.handshake = None
-            return
+            raise TLS_Malformed_Package_Exception('size of nested handshake package is zero in handshake package')
 
         # fetch and parse content
         hs_content = buffer[5:5+hs_size]
-        if hs_content[0:1] == TLS_Handshake_pkg_ClientHello.PACKAGETYPE:
-            self.handshake = TLS_Handshake_pkg_ClientHello()
-        elif hs_content[0:1] == TLS_Handshake_pkg_ServerHello.PACKAGETYPE:
-            self.handshake = TLS_Handshake_pkg_ServerHello()
-        elif hs_content[0:1] == TLS_Handshake_pkg_Certificate.PACKAGETYPE:
-            self.handshake = TLS_Handshake_pkg_Certificate()
-        elif hs_content[0:1] == TLS_Handshake_pkg_ServerKeyExchange.PACKAGETYPE:
-            self.handshake = TLS_Handshake_pkg_ServerKeyExchange()
-        elif hs_content[0:1] == TLS_Handshake_pkg_ServerHelloDone.PACKAGETYPE:
-            self.handshake = TLS_Handshake_pkg_ServerHelloDone()
-        else:
-            raise TLS_Exception('unknown TLS handshake package type: ' + binascii.hexlify(hs_content[0:1]))
+        hs_pos = 0
+        while hs_pos < hs_size:
+            try:
+                if hs_content[hs_pos:hs_pos+1] == TLS_Handshake_pkg_ClientHello.PACKAGETYPE:
+                    hs = TLS_Handshake_pkg_ClientHello()
+                elif hs_content[hs_pos:hs_pos+1] == TLS_Handshake_pkg_ServerHello.PACKAGETYPE:
+                    hs = TLS_Handshake_pkg_ServerHello()
+                elif hs_content[hs_pos:hs_pos+1] == TLS_Handshake_pkg_Certificate.PACKAGETYPE:
+                    hs = TLS_Handshake_pkg_Certificate()
+                elif hs_content[hs_pos:hs_pos+1] == TLS_Handshake_pkg_ServerKeyExchange.PACKAGETYPE:
+                    hs = TLS_Handshake_pkg_ServerKeyExchange()
+                elif hs_content[hs_pos:hs_pos+1] == TLS_Handshake_pkg_ServerHelloDone.PACKAGETYPE:
+                    hs = TLS_Handshake_pkg_ServerHelloDone()
+                else:
+                    raise TLS_Exception('unknown TLS handshake package type: ' + binascii.hexlify(hs_content[0:1]))
 
-        self.handshake.parse(hs_content)
+                hs.parse(hs_content[hs_pos:])
+                self.handshake += [hs]
+                hs_pos += hs.size()
+            except TLS_Parser_Exception as e:
+                raise TLS_Malformed_Package_Exception('parser exception for nested handshake package: ' + str(e))
 
         return self
 
@@ -303,6 +318,9 @@ class TLS_Handshake_pkg_ClientHello(TLS_Handshake_pkg):
         [pkg_size] = struct.unpack('!I', b'\x00' + buffer[1:4])
         self.parser_assert_len(buffer, 4 + pkg_size)
         pkg_content = buffer[4:4+pkg_size]
+
+        # set parse size
+        self.setParseSize(4 + pkg_size)
 
         # pkg_size valid?
         if pkg_size < 38:
@@ -419,8 +437,8 @@ class TLS_Handshake_pkg_ServerHello(TLS_Handshake_pkg):
         ext_content = b''.join(ext.serialize() for ext in self.extensions)
         ext_size = struct.pack('!H', len(ext_content))
 
-        #  1 byte   handshake type      (0x01 = ClientHello)
-        #  3 bytes  size in bytes of ClientHello package
+        #  1 byte   handshake type      (0x02 = ServerHello)
+        #  3 bytes  size in bytes of ServerHello package
         #  2 bytes  SSL/TLS version     (0x0303 = TLS 1.2)
         #  4 bytes  UNIX Timestamp
         # 28 bytes  random bytes
@@ -446,6 +464,9 @@ class TLS_Handshake_pkg_ServerHello(TLS_Handshake_pkg):
         [pkg_size] = struct.unpack('!I', b'\x00' + buffer[1:4])
         self.parser_assert_len(buffer, 4 + pkg_size)
         pkg_content = buffer[4:4+pkg_size]
+
+        # set parse size
+        self.setParseSize(4 + pkg_size)
 
         # pkg_size valid?
         if pkg_size < 38:
@@ -533,6 +554,9 @@ class TLS_Handshake_pkg_Certificate(TLS_Handshake_pkg):
         self.parser_assert_len(buffer, 4 + pkg_size)
         pkg_content = buffer[4:4+pkg_size]
 
+        # set parse size
+        self.setParseSize(4 + pkg_size)
+
         # pointer for current position in pkg_content
         pos = 0
         self.certificates = []
@@ -577,6 +601,9 @@ class TLS_Handshake_pkg_ServerKeyExchange(TLS_Handshake_pkg):
         self.parser_assert_len(buffer, 4 + pkg_size)
         pkg_content = buffer[4:4+pkg_size]
 
+        # set parse size
+        self.setParseSize(4 + pkg_size)
+
         # TODO: not implemented yet
 
 
@@ -601,5 +628,8 @@ class TLS_Handshake_pkg_ServerHelloDone(TLS_Handshake_pkg):
         [pkg_size] = struct.unpack('!I', b'\x00' + buffer[1:4])
         self.parser_assert_len(buffer, 4 + pkg_size)
         pkg_content = buffer[4:4+pkg_size]
+
+        # set parse size
+        self.setParseSize(4 + pkg_size)
 
         # TODO: not implemented yet

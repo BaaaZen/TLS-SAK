@@ -93,16 +93,20 @@ class TLS_Connection:
         handshake_client_hello = TLS_pkg_Handshake(self.client_protocol_version, client_hello)
         self.connection.send(handshake_client_hello.serialize())
 
-        while True:
+        serverHelloDoneReceived = False
+        while not serverHelloDoneReceived:
             pkg = self._readPackage()
             if type(pkg) is TLS_pkg_Alert:
                 raise TLS_Alert_Exception(pkg.getLevel(), pkg.getDescription())
             elif type(pkg) is not TLS_pkg_Handshake:
                 raise TLS_Protocol_Exception('handshake package excepted, but received other package')
 
-            if type(pkg.handshake) is TLS_Handshake_pkg_ServerHello:
-                self.cipher_suite = pkg.handshake.cipher_suite
-                self.compression_method = pkg.handshake.compression_method
-                self.server_protocol_version = pkg.handshake.version
-            elif type(pkg.handshake) is TLS_Handshake_pkg_ServerHelloDone:
-                break
+            # this is a handshake package
+            for hs in pkg.handshake:
+                if type(hs) is TLS_Handshake_pkg_ServerHello:
+                    self.cipher_suite = hs.cipher_suite
+                    self.compression_method = hs.compression_method
+                    self.server_protocol_version = hs.version
+                elif type(hs) is TLS_Handshake_pkg_ServerHelloDone:
+                    serverHelloDoneReceived = True
+                    break
