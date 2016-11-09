@@ -224,7 +224,7 @@ class TLS_pkg_Handshake(TLS_pkg):
                 elif hs_content[hs_pos:hs_pos+1] == TLS_Handshake_pkg_ServerHelloDone.PACKAGETYPE:
                     hs = TLS_Handshake_pkg_ServerHelloDone()
                 else:
-                    raise TLS_Exception('unknown TLS handshake package type: ' + binascii.hexlify(hs_content[0:1]))
+                    raise TLS_Exception('unknown TLS handshake package type: ' + binascii.hexlify(hs_content[0:1]).decode('utf-8'))
 
                 hs.parse(hs_content[hs_pos:])
                 self.handshake += [hs]
