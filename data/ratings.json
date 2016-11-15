@@ -11,10 +11,12 @@
     "DH": {"status": "secure", "rating": 4},
     "ECDH": {"status": "secure", "rating": 4},
     "RSA": {"status": "secure", "rating": 4},
+    "RSA_EXPORT1024":  {"status": "insecure", "rating": -3},
     "NULL": {"status": "unencrypted", "rating": -5}
   },
   "au": {
     "RSA": {"status": "secure", "rating": 5},
+    "RSA_EXPORT1024":  {"status": "insecure", "rating": -3},
     "Anon": {"status": "insecure", "rating": -5}
   },
   "enc": {
@@ -28,16 +30,22 @@
     "CAMELLIA_128_CBC": {"status": "secure", "rating": 4},
     "KRB5": {"status": "secure", "rating": 5},
     "KRB5_EXPORT": {"status": "insecure", "rating": -3},
-    "DES_CBC": {"status": "insecure", "rating": -5},
     "3DES_EDE_CBC": {"status": "insecure", "rating": -3},
     "RC4_40": {"status": "insecure", "rating": -5},
+    "RC4_56": {"status": "insecure", "rating": -5},
     "RC4_128": {"status": "insecure", "rating": -4},
     "RSA_EXPORT": {"status": "insecure", "rating": -3},
+    "RC2_CBC_40": {"status": "insecure", "rating": -5},
+    "RC2_CBC_56": {"status": "insecure", "rating": -5},
+    "DES_CBC": {"status": "insecure", "rating": -5},
+    "DES40_CBC": {"status": "insecure", "rating": -5},
     "NULL": {"status": "unencrypted", "rating": -5}
   },
   "bits": {
     "0": {"status": "insecure", "rating": -5},
+    "56": {"status": "insecure", "rating": -4},
     "128": {"status": "secure", "rating": 4},
+    "168": {"status": "secure", "rating": 4},
     "256": {"status": "secure", "rating": 5}
   },
   "mac": {
