@@ -12,11 +12,13 @@
     "ECDH": {"status": "secure", "rating": 4},
     "RSA": {"status": "secure", "rating": 4},
     "RSA_EXPORT1024":  {"status": "insecure", "rating": -3},
+    "RSA_EXPORT":  {"status": "insecure", "rating": -4},
     "NULL": {"status": "unencrypted", "rating": -5}
   },
   "au": {
     "RSA": {"status": "secure", "rating": 5},
     "RSA_EXPORT1024":  {"status": "insecure", "rating": -3},
+    "RSA_EXPORT":  {"status": "insecure", "rating": -4},
     "Anon": {"status": "insecure", "rating": -5}
   },
   "enc": {
@@ -34,7 +36,6 @@
     "RC4_40": {"status": "insecure", "rating": -5},
     "RC4_56": {"status": "insecure", "rating": -5},
     "RC4_128": {"status": "insecure", "rating": -4},
-    "RSA_EXPORT": {"status": "insecure", "rating": -3},
     "RC2_CBC_40": {"status": "insecure", "rating": -5},
     "RC2_CBC_56": {"status": "insecure", "rating": -5},
     "DES_CBC": {"status": "insecure", "rating": -5},
@@ -43,6 +44,7 @@
   },
   "bits": {
     "0": {"status": "insecure", "rating": -5},
+    "40": {"status": "insecure", "rating": -4},
     "56": {"status": "insecure", "rating": -4},
     "128": {"status": "secure", "rating": 4},
     "168": {"status": "secure", "rating": 4},
