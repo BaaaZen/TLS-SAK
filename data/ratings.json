@@ -1,0 +1,50 @@
+{
+  "protocol": {
+    "SSLv3": {"status": "deprecated", "rating": -5},
+    "TLSv1": {"status": "avoid", "rating": -1},
+    "TLSv1.1": {"status": "secure", "rating": 4},
+    "TLSv1.2": {"status": "secure", "rating": 5}
+  },
+  "kx": {
+    "DHE": {"status": "pfs", "rating": 5, "pfs": true},
+    "ECDHE": {"status": "pfs", "rating": 5, "pfs": true},
+    "DH": {"status": "secure", "rating": 4},
+    "ECDH": {"status": "secure", "rating": 4},
+    "RSA": {"status": "secure", "rating": 4},
+    "NULL": {"status": "unencrypted", "rating": -5}
+  },
+  "au": {
+    "RSA": {"status": "secure", "rating": 5},
+    "Anon": {"status": "insecure", "rating": -5}
+  },
+  "enc": {
+    "AES_256_GCM": {"status": "secure", "rating": 5},
+    "AES_256_CBC": {"status": "secure", "rating": 4},
+    "CAMELLIA_256_GCM": {"status": "secure", "rating": 5},
+    "CAMELLIA_256_CBC": {"status": "secure", "rating": 4},
+    "AES_128_GCM": {"status": "secure", "rating": 5},
+    "AES_128_CBC": {"status": "secure", "rating": 4},
+    "CAMELLIA_128_GCM": {"status": "secure", "rating": 5},
+    "CAMELLIA_128_CBC": {"status": "secure", "rating": 4},
+    "KRB5": {"status": "secure", "rating": 5},
+    "KRB5_EXPORT": {"status": "insecure", "rating": -3},
+    "DES_CBC": {"status": "insecure", "rating": -5},
+    "3DES_EDE_CBC": {"status": "insecure", "rating": -3},
+    "RC4_40": {"status": "insecure", "rating": -5},
+    "RC4_128": {"status": "insecure", "rating": -4},
+    "RSA_EXPORT": {"status": "insecure", "rating": -3},
+    "NULL": {"status": "unencrypted", "rating": -5}
+  },
+  "bits": {
+    "0": {"status": "insecure", "rating": -5},
+    "128": {"status": "secure", "rating": 4},
+    "256": {"status": "secure", "rating": 5}
+  },
+  "mac": {
+    "SHA512": {"status": "secure", "rating": 5},
+    "SHA384": {"status": "secure", "rating": 5},
+    "SHA256": {"status": "secure", "rating": 5},
+    "SHA": {"status": "secure", "rating": 4},
+    "MD5": {"status": "secure", "rating": 3}
+  }
+}

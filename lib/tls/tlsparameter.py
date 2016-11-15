@@ -1,6 +1,9 @@
 import binascii
 
 from lib.tls.tlsexceptions import TLS_Exception
+from lib.tls.tlsratings import TLS_Rating
+from lib.tls.tlsratings import TLS_Ratings_Database
+
 
 class TLS_CipherSuite:
     def __init__(self, cs_id, name='unknown', protocol=None, kx=None, au=None, enc=None, bits=None, mac=None, ref=None):
@@ -24,6 +27,16 @@ class TLS_CipherSuite:
     def serialize(self):
         return self.cs_id
 
+    def getRating(self, protocol):
+        ra = {}
+        ra['protocol'] = TLS_Ratings_Database.getInstance().getRating(param='protocol', setting=protocol)
+        ra['kx'] = TLS_Ratings_Database.getInstance().getRating(param='kx', setting=self.kx)
+        ra['au'] = TLS_Ratings_Database.getInstance().getRating(param='au', setting=self.au)
+        ra['enc'] = TLS_Ratings_Database.getInstance().getRating(param='enc', setting=self.enc)
+        ra['bits'] = TLS_Ratings_Database.getInstance().getRating(param='bits', setting=self.bits)
+        ra['mac'] = TLS_Ratings_Database.getInstance().getRating(param='mac', setting=self.mac)
+        return TLS_Rating.getParentRating(ra)
+
 class TLS_CompressionMethod:
     def __init__(self, cm_id, name='unknown'):
         # validation
@@ -38,7 +51,6 @@ class TLS_CompressionMethod:
 
     def serialize(self):
         return self.cm_id
-
 
 class TLS_Extension:
     def __init__(self):
