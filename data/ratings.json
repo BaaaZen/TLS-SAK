@@ -1,7 +1,7 @@
 {
   "protocol": {
     "SSLv3": {"status": "deprecated", "rating": -5},
-    "TLSv1": {"status": "avoid", "rating": -1},
+    "TLSv1.0": {"status": "avoid", "rating": -1},
     "TLSv1.1": {"status": "secure", "rating": 4},
     "TLSv1.2": {"status": "secure", "rating": 5}
   },

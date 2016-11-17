@@ -67,7 +67,7 @@ class TLS_pkg_Alert(TLS_pkg):
                     b'\x3c': 'export_restriction_RESERVED', b'\x46': 'protocol_version', b'\x47': 'insufficient_security', \
                     b'\x50': 'internal_error', b'\x5a': 'user_canceled', b'\x64': 'no_renegotiation'}
 
-    def __init__(self, version='TLSv1', level=b'\x01', description=b'\x50'):
+    def __init__(self, version='TLSv1.2', level=b'\x01', description=b'\x50'):
         self.version = version
 
         # validation
@@ -157,7 +157,7 @@ class TLS_pkg_Alert(TLS_pkg):
 class TLS_pkg_Handshake(TLS_pkg):
     PACKAGETYPE = b'\x16'
 
-    def __init__(self, version='TLSv1', handshake=None):
+    def __init__(self, version='TLSv1.2', handshake=None):
         self.version = version
         if type(handshake) is list:
             self.handshake = handshake
@@ -242,7 +242,7 @@ class TLS_Handshake_pkg(TLS_pkg):
 
 class TLS_Handshake_pkg_ClientHello(TLS_Handshake_pkg):
     PACKAGETYPE = b'\x01'
-    def __init__(self, version='TLSv1', timestamp=int(time.time()), random=b'\x00'*28, session_id=None, cipher_suites=None, compression_methods=None, extensions=None):
+    def __init__(self, version='TLSv1.2', timestamp=int(time.time()), random=b'\x00'*28, session_id=None, cipher_suites=None, compression_methods=None, extensions=None):
         # validate content
         if session_id is None:
             session_id = b''
@@ -398,7 +398,7 @@ class TLS_Handshake_pkg_ClientHello(TLS_Handshake_pkg):
 
 class TLS_Handshake_pkg_ServerHello(TLS_Handshake_pkg):
     PACKAGETYPE = b'\x02'
-    def __init__(self, version='TLSv1', timestamp=int(time.time()), random=b'\x00'*28, session_id=None, cipher_suite=None, compression_method=None, extensions=None):
+    def __init__(self, version='TLSv1.2', timestamp=int(time.time()), random=b'\x00'*28, session_id=None, cipher_suite=None, compression_method=None, extensions=None):
         # validate content
         if session_id is None:
             session_id = b''
