@@ -20,8 +20,8 @@ class Connection_TCP_Socket(Connection):
 
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.settimeout(10)
             self.socket.connect((self.host, self.port))
-            #self.socket.settimeout(10)
         except socket.gaierror as e:
             raise Connection_Exception(e)
         except TimeoutError as e:
