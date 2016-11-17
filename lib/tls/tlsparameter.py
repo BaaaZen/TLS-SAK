@@ -6,7 +6,7 @@ from lib.tls.tlsratings import TLS_Ratings_Database
 
 
 class TLS_CipherSuite:
-    def __init__(self, cs_id, name='unknown', protocol=None, kx=None, au=None, enc=None, bits=None, mac=None, ref=None):
+    def __init__(self, cs_id, name='unknown', kx=None, au=None, enc=None, bits=None, mac=None, ref=None):
         # validation
         if type(cs_id) is not bytes or len(cs_id) != 2:
             cs_id_str = 'None'
@@ -16,7 +16,6 @@ class TLS_CipherSuite:
 
         self.cs_id = cs_id
         self.name = name
-        self.protocol = protocol
         self.kx = kx
         self.au = au
         self.enc = enc
