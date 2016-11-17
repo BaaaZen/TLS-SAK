@@ -69,11 +69,11 @@ class TLS_Ratings_Database():
 
         self.database = json.loads(data)
 
-    def getRating(self, param, setting):
+    def getRating(self, param, setting, default=TLS_Rating(status='unknown', rating=0)):
         if param in self.database and setting in self.database[param]:
             return TLS_Rating(**self.database[param][setting])
         else:
-            return TLS_Rating(status='unknown', rating=0)
+            return default
 
     def getAllParameters(self):
         return self.database.keys()
