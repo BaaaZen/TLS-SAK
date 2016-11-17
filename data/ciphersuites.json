@@ -336,5 +336,5 @@
 "FEFE": {"name": "SSL_RSA_FIPS_WITH_DES_CBC_SHA", "kx": "RSA_FIPS", "au": "RSA_FIPS", "enc": "DES_CBC", "bits": "56", "mac": "SHA"},
 "FEFF": {"name": "SSL_RSA_FIPS_WITH_3DES_EDE_CBC_SHA", "kx": "RSA_FIPS", "au": "RSA_FIPS", "enc": "3DES_EDE_CBC", "bits": "168", "mac": "SHA"},
 "FFE0": {"name": "SSL_RSA_FIPS_WITH_3DES_EDE_CBC_SHA", "kx": "RSA_FIPS", "au": "RSA_FIPS", "enc": "3DES_EDE_CBC", "bits": "168", "mac": "SHA"},
-"FFE1": {"name": "SSL_RSA_FIPS_WITH_DES_CBC_SHA", "protocol": "SSL", "kx": "RSA_FIPS", "au": "RSA_FIPS", "enc": "DES_CBC", "bits": "56", "mac": "SHA"}
+"FFE1": {"name": "SSL_RSA_FIPS_WITH_DES_CBC_SHA", "kx": "RSA_FIPS", "au": "RSA_FIPS", "enc": "DES_CBC", "bits": "56", "mac": "SHA"}
 }
