@@ -24,6 +24,8 @@ class Connection_TCP_Socket(Connection):
             self.socket.connect((self.host, self.port))
         except socket.gaierror as e:
             raise Connection_Exception(e)
+        except socket.timeout as e:
+            raise Connection_Exception(e)
         except TimeoutError as e:
             raise Connection_Exception(e)
 
