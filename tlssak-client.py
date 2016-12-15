@@ -36,7 +36,7 @@ plugins = [lib.plugin.test.ciphers.List_Ciphers_Test, \
             lib.plugin.output.stdout.Stdout_Log_Output_Plugin]
 
 def main():
-    # init plugins
+    # load plugins
     for p in plugins:
         Plugin.loadPlugin(p)
 
@@ -51,14 +51,10 @@ def main():
     # create storage
     storage = Plugin_Storage()
 
-    # execute main client functionality
+    # init plugins
     Plugin.executeLambda(None, lambda p, stor=storage, args=args: p.init(stor, args))
-    client(storage, args)
 
-    # deinit plugins:
-    Plugin.executeLambda(None, lambda p, stor=storage: p.deinit(stor))
-
-def client(storage, args):
+    # execute main client functionality
     # create connection object
     if args.starttls == 'ftp':
         connection = Connection_STARTTLS_FTP(args.host, args.port)
@@ -69,6 +65,9 @@ def client(storage, args):
 
     # execute all active tests
     Plugin.executeLambda(Active_Test_Plugin, lambda p, c=connection, stor=storage: p.execute(c, stor))
+
+    # deinit plugins:
+    Plugin.executeLambda(None, lambda p, stor=storage: p.deinit(stor))
 
 if __name__ == '__main__':
     main()
