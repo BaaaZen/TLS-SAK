@@ -36,31 +36,27 @@ class Output_Ciphersuites_Plugin(Plugin):
     def reportCiphersuite(self, cs):
         pass
 
-class Collective_Output_Plugin(Output_Log_Plugin,Output_Ciphersuites_Plugin):
-    def __init__(self):
-        self.subPlugins = []
-
-    def addOutputPlugin(self, plugin):
-        if not issubclass(type(plugin), Output_Plugin):
-            raise Plugin_Exception('Collective_Output_Plugin expects an Output_Plugin for adding')
-        self.subPlugins += [plugin]
-
-    def configure(self, args=None):
-        for p in self.subPlugins:
-            p.configure(args=args)
+class Helper_Output_Plugin(Output_Log_Plugin,Output_Ciphersuites_Plugin):
+    def _helper(self, p, l):
+        if p != self:
+            l(p)
 
     def logVerbose(self, msg):
-        for p in self.subPlugins:
-            p.logVerbose(msg=msg)
+        l = lambda p, msg=msg: p.logVerbose(msg)
+        l = lambda p, s=self, l=l: s._helper(p, l)
+        Plugin.executeLambda(Output_Log_Plugin, l)
 
     def logInfo(self, msg):
-        for p in self.subPlugins:
-            p.logInfo(msg=msg)
+        l = lambda p, msg=msg: p.logInfo(msg)
+        l = lambda p, s=self, l=l: s._helper(p, l)
+        Plugin.executeLambda(Output_Log_Plugin, l)
 
     def logError(self, msg):
-        for p in self.subPlugins:
-            p.logError(msg=msg)
+        l = lambda p, msg=msg: p.logError(msg)
+        l = lambda p, s=self, l=l: s._helper(p, l)
+        Plugin.executeLambda(Output_Log_Plugin, l)
 
     def reportCiphersuite(self, cs):
-        for p in self.subPlugins:
-            p.reportCiphersuite(cs=cs)
+        l = lambda p, msg=msg: p.reportCiphersuite(cs)
+        l = lambda p, s=self, l=l: s._helper(p, l)
+        Plugin.executeLambda(Output_Ciphersuites_Plugin, l)

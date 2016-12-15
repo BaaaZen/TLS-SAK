@@ -24,17 +24,20 @@ from lib.connection.starttls import Connection_STARTTLS_FTP
 from lib.connection.starttls import Connection_STARTTLS_SMTP
 from lib.connection.tcpsocket import Connection_TCP_Socket
 from lib.plugin import Plugin
+import lib.plugin.output
+import lib.plugin.output.stdout
 import lib.plugin.test.ciphers
 
 # presets
 starttls_supported = ['smtp', 'ftp']
-plugins = [lib.plugin.test.ciphers.List_Ciphers_Test]
+plugins = [lib.plugin.test.ciphers.List_Ciphers_Test, \
+            lib.plugin.output.Helper_Output_Plugin, \
+            lib.plugin.output.stdout.Stdout_Log_Output_Plugin]
 
 def main():
     # init plugins
     for p in plugins:
         Plugin.loadPlugin(p)
-    Plugin.executeLambda(None, lambda p: p.init())
 
     # prepare argument parser
     parser = argparse.ArgumentParser()
@@ -45,6 +48,7 @@ def main():
     args = parser.parse_args()
 
     # execute main client functionality
+    Plugin.executeLambda(None, lambda p, args=args: p.init(args))
     client(args)
 
     # deinit plugins:
@@ -53,14 +57,11 @@ def main():
 def client(args):
     # create connection object
     if args.starttls == 'ftp':
-        connectionClass = 'Connection_STARTTLS_FTP'
+        connection = Connection_STARTTLS_FTP(args.host, args.port)
     elif args.starttls == 'smtp':
-        connectionClass = 'Connection_STARTTLS_SMTP'
+        connection = Connection_STARTTLS_SMTP(args.host, args.port)
     else:
-        connectionClass = 'Connection_TCP_Socket'
-    connection = connectionClass(args.host, args.port)
-
-
+        connection = Connection_TCP_Socket(args.host, args.port)
 
 
 if __name__ == '__main__':

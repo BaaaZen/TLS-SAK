@@ -24,7 +24,7 @@ class Plugin:
     def prepareArguments(self, parser):
         pass
 
-    def init(self):
+    def init(self, args):
         pass
 
     def deinit(self):
@@ -40,7 +40,7 @@ class Plugin:
     @staticmethod
     def executeLambda(pluginType=None, lambdaFunction=None):
         for instance in Plugin.instances:
-            if pluginType is None or issubclass(instance, pluginType):
+            if pluginType is None or issubclass(type(instance), pluginType):
                 lambdaFunction(instance)
 
     @staticmethod
