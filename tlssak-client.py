@@ -54,7 +54,6 @@ def main():
     # init plugins
     Plugin.executeLambda(None, lambda p, stor=storage, args=args: p.init(stor, args))
 
-    # execute main client functionality
     # create connection object
     if args.starttls == 'ftp':
         connection = Connection_STARTTLS_FTP(args.host, args.port)
