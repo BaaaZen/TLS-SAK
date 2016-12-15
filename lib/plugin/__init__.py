@@ -19,6 +19,7 @@ import lib.plugin
 
 class Plugin:
     instances = []
+    namedInstances = {}
 
     def prepareArguments(self, parser):
         pass
