@@ -34,7 +34,7 @@ class Plugin:
     def loadPlugin(plugin):
         instance = plugin()
         Plugin.instances += [instance]
-        Plugin.namedInstances[instance.__name__] = instance
+        Plugin.namedInstances[type(instance).__name__] = instance
         return instance
 
     @staticmethod
