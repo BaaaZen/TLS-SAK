@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# TLS SAK imports
 import lib.plugin
 
 class Plugin:
@@ -24,10 +25,10 @@ class Plugin:
     def prepareArguments(self, parser):
         pass
 
-    def init(self, args):
-        pass
+    def init(self, storage, args):
+        storage.put(type(self).__name__, Plugin_Storage())
 
-    def deinit(self):
+    def deinit(self, storage):
         pass
 
     @staticmethod
@@ -48,6 +49,34 @@ class Plugin:
         if plugin not in Plugin.namedInstances:
             return None
         return Plugin.namedInstances[plugin]
+
+class Plugin_Storage:
+    def __init__(self):
+        self._storage = {}
+
+    def __getattr__(self, name):
+        return self.get(name)
+
+    def __setattr__(self, name, value):
+        if name[:1] == '_':
+            super().__setattr__(name, value)
+        else:
+            self.put(name, value)
+
+    def get(self, key, default=None):
+        if key not in self._storage:
+            return default
+        return self._storage[key]
+
+    def put(self, key, value):
+        self._storage[key] = value
+
+    def init(self, key, value):
+        self.put(key, value)
+        return self.get(key, value)
+
+    def append(self, key, value):
+        self.put(key, self.get(key, []) + [value])
 
 class Plugin_Exception(Exception):
     def __init__(self, msg):

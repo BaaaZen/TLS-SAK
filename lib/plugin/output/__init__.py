@@ -20,9 +20,6 @@ from lib.plugin import Plugin
 from lib.plugin import Plugin_Exception
 
 class Output_Log_Plugin(Plugin):
-    def configure(self, args=None):
-        pass
-
     def logVerbose(self, msg):
         pass
 

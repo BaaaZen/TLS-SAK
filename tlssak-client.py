@@ -19,11 +19,12 @@
 import argparse
 
 # TLS SAK imports
-from lib.connection import Connection_Exception
 from lib.connection.starttls import Connection_STARTTLS_FTP
 from lib.connection.starttls import Connection_STARTTLS_SMTP
 from lib.connection.tcpsocket import Connection_TCP_Socket
 from lib.plugin import Plugin
+from lib.plugin import Plugin_Storage
+from lib.plugin.test import Active_Test_Plugin
 import lib.plugin.output
 import lib.plugin.output.stdout
 import lib.plugin.test.ciphers
@@ -47,14 +48,17 @@ def main():
     Plugin.executeLambda(None, lambda p, parser=parser: p.prepareArguments(parser))
     args = parser.parse_args()
 
+    # create storage
+    storage = Plugin_Storage()
+
     # execute main client functionality
-    Plugin.executeLambda(None, lambda p, args=args: p.init(args))
-    client(args)
+    Plugin.executeLambda(None, lambda p, stor=storage, args=args: p.init(stor, args))
+    client(storage, args)
 
     # deinit plugins:
-    Plugin.executeLambda(None, lambda p: p.deinit())
+    Plugin.executeLambda(None, lambda p, stor=storage: p.deinit(stor))
 
-def client(args):
+def client(storage, args):
     # create connection object
     if args.starttls == 'ftp':
         connection = Connection_STARTTLS_FTP(args.host, args.port)
@@ -63,6 +67,8 @@ def client(args):
     else:
         connection = Connection_TCP_Socket(args.host, args.port)
 
+    # execute all active tests
+    Plugin.executeLambda(Active_Test_Plugin, lambda p, c=connection, stor=storage: p.execute(c, stor))
 
 if __name__ == '__main__':
     main()

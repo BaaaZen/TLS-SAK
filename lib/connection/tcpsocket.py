@@ -48,6 +48,8 @@ class Connection_TCP_Socket(Connection):
             raise Connection_Exception(e)
         except TimeoutError as e:
             raise Connection_Exception(e)
+        except ConnectionRefusedError as e:
+            raise Connection_Exception(e)
 
     def close(self):
         if self.socket != None:

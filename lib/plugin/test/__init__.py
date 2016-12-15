@@ -19,8 +19,11 @@
 from lib.plugin import Plugin
 
 class Test_Plugin(Plugin):
-    pass
+    def init(self, storage, args):
+        super().init(storage, args)
+        
+        self.output = Plugin.getPlugin('Helper_Output_Plugin')
 
 class Active_Test_Plugin(Test_Plugin):
-    def execute(self, connection=None, output=None, args=None):
+    def execute(self, connection, storage):
         pass
