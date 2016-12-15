@@ -51,4 +51,4 @@ class TLS_CipherSuite_Database():
             return TLS_CipherSuite(cs_id=cs_id, name='unknown (' + binascii.hexlify(cs_id) + ')')
 
     def getAllCipherSuites(self):
-        return [self.getCipherSuite(cs_id) for cs_id in self.database]
+        return [self.getCipherSuite(cs_id) for cs_id in sorted(self.database.keys())]
