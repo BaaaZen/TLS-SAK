@@ -23,16 +23,30 @@ class Plugin:
     def prepareArguments(self, parser):
         pass
 
+    def init(self):
+        pass
+
+    def deinit(self):
+        pass
+
     @staticmethod
     def loadPlugin(plugin):
         instance = plugin()
         Plugin.instances += [instance]
+        Plugin.namedInstances[instance.__name__] = instance
         return instance
 
     @staticmethod
-    def preparePluginArguments(parser):
+    def executeLambda(pluginType=None, lambdaFunction=None):
         for instance in Plugin.instances:
-            instance.prepareArguments(parser)
+            if pluginType is None or issubclass(instance, pluginType):
+                lambdaFunction(instance)
+
+    @staticmethod
+    def getPlugin(plugin):
+        if plugin not in Plugin.namedInstances:
+            return None
+        return Plugin.namedInstances[plugin]
 
 class Plugin_Exception(Exception):
     def __init__(self, msg):

@@ -19,7 +19,7 @@
 from lib.plugin import Plugin
 from lib.plugin import Plugin_Exception
 
-class Output_Plugin(Plugin):
+class Output_Log_Plugin(Plugin):
     def configure(self, args=None):
         pass
 
@@ -32,10 +32,11 @@ class Output_Plugin(Plugin):
     def logError(self, msg):
         pass
 
+class Output_Ciphersuites_Plugin(Plugin):
     def reportCiphersuite(self, cs):
         pass
 
-class Collective_Output_Plugin(Output_Plugin):
+class Collective_Output_Plugin(Output_Log_Plugin,Output_Ciphersuites_Plugin):
     def __init__(self):
         self.subPlugins = []
 

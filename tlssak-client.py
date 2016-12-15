@@ -34,25 +34,31 @@ def main():
     # init plugins
     for p in plugins:
         Plugin.loadPlugin(p)
+    Plugin.executeLambda(None, lambda p: p.init())
 
     # prepare argument parser
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--starttls', help='use STARTTLS for specific protocol', choices=starttls_supported, dest='starttls')
     parser.add_argument('-p', '--port', type=int, default=443, help='TCP port to be checked', dest='port')
     parser.add_argument('host', help='hostname or IP address of target system')
-    Plugin.preparePluginArguments(parser)
+    Plugin.executeLambda(None, lambda p, parser=parser: p.prepareArguments(parser))
     args = parser.parse_args()
 
+    # execute main client functionality
     client(args)
+
+    # deinit plugins:
+    Plugin.executeLambda(None, lambda p: p.deinit())
 
 def client(args):
     # create connection object
     if args.starttls == 'ftp':
-        connection = Connection_STARTTLS_FTP(args.host, args.port)
+        connectionClass = 'Connection_STARTTLS_FTP'
     elif args.starttls == 'smtp':
-        connection = Connection_STARTTLS_SMTP(args.host, args.port)
+        connectionClass = 'Connection_STARTTLS_SMTP'
     else:
-        connection = Connection_TCP_Socket(args.host, args.port)
+        connectionClass = 'Connection_TCP_Socket'
+    connection = connectionClass(args.host, args.port)
 
 
 
