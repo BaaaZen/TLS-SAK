@@ -25,6 +25,9 @@ from lib.tls.tlsconnection import TLS_Connection
 from lib.tls.tlsexceptions import TLS_Alert_Exception
 
 class List_Ciphers_Test(Active_Test_Plugin):
+    def instancable(self):
+        return True
+
     def init(self, storage, args):
         super().init(storage, args)
 

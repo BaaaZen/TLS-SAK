@@ -18,6 +18,9 @@
 # TLS SAK imports
 import lib.plugin
 
+import inspect
+import sys
+
 class Plugin:
     instances = []
     namedInstances = {}
@@ -30,6 +33,30 @@ class Plugin:
 
     def deinit(self, storage):
         pass
+
+    def instancable(self):
+        return False
+
+    @staticmethod
+    def findPlugins(mod='lib.plugin'):
+        inst = []
+        m = __import__(mod, fromlist=[''])
+        for k in dir(m):
+            attr = getattr(m, k)
+            if type(attr).__name__ == 'module':
+                try:
+                    cll = Plugin.findPlugins(mod + '.' + k)
+                    for cl in cll:
+                        if cl not in inst:
+                            inst += [cl]
+                except ImportError as e:
+                    pass
+            elif inspect.isclass(attr) and issubclass(attr, Plugin) and attr().instancable():
+                if attr not in inst:
+                    inst += [attr]
+            else:
+                pass
+        return inst
 
     @staticmethod
     def loadPlugin(plugin):

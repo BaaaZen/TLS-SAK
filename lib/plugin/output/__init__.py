@@ -34,6 +34,9 @@ class Output_Ciphersuites_Plugin(Plugin):
         pass
 
 class Helper_Output_Plugin(Output_Log_Plugin,Output_Ciphersuites_Plugin):
+    def instancable(self):
+        return True
+
     def _helper(self, p, l):
         if p != self:
             l(p)

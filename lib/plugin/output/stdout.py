@@ -19,6 +19,9 @@
 from lib.plugin.output import Output_Log_Plugin
 
 class Stdout_Log_Output_Plugin(Output_Log_Plugin):
+    def instancable(self):
+        return True
+
     def logVerbose(self, msg):
         print(msg)
 

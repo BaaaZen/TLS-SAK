@@ -31,12 +31,11 @@ import lib.plugin.test.ciphers
 
 # presets
 starttls_supported = ['smtp', 'ftp']
-plugins = [lib.plugin.test.ciphers.List_Ciphers_Test, \
-            lib.plugin.output.Helper_Output_Plugin, \
-            lib.plugin.output.stdout.Stdout_Log_Output_Plugin]
 
 def main():
     # load plugins
+    plugins = Plugin.findPlugins()
+    # TODO: plugin dependencies!
     for p in plugins:
         Plugin.loadPlugin(p)
 
