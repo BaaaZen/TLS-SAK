@@ -75,11 +75,99 @@ class List_Ciphers_Test(Active_Test_Plugin):
                         chosen_cipher_suite = tls_connection.getChosenCipherSuite()
 
                         # output result
-                        storage.append('ciphersuites', chosen_cipher_suite)
+                        storage.append('ciphersuites@' + protocol, chosen_cipher_suite)
                         self.output.logInfo(' * ' + chosen_cipher_suite.name)
 
                         # remove cipher suite from list
                         cipher_suites.remove(chosen_cipher_suite)
+            except TLS_Alert_Exception as e:
+                if e.description != 'handshake_failure':
+                    self.output.logError(str(e))
+
+            except Connection_Exception as e:
+                self.output.logError('Error while connecting: ' + str(e))
+                connection.close()
+
+
+class Check_Honor_Cipher_Order_Test(Active_Test_Plugin):
+    def dependencies(self):
+        return [List_Ciphers_Test.__name__]
+
+    def instancable(self):
+        return True
+
+    def init(self, storage, args):
+        super().init(storage, args)
+
+        storage = storage.get(type(self).__name__)
+
+        # parse protocols
+        if len(args.tlsprotocol) < 1:
+            args.tlsprotocol = ['*']
+
+        protocols = []
+        for pitem in args.tlsprotocol:
+            if pitem == '*':
+                toadd = sorted(list(TLS_VERSIONS.keys()))
+            elif pitem in TLS_VERSIONS.keys():
+                toadd = [pitem]
+            else:
+                toadd = []
+
+            for item in toadd:
+                if item not in protocols:
+                    protocols += [item]
+
+        storage.put('protocols', protocols)
+
+    def prepareArguments(self, parser):
+        pass
+
+    def execute(self, connection, storage):
+        storage = storage.get(type(self).__name__)
+        protocols = storage.get('protocols', [])
+
+        cl_storage = storage.get(List_Ciphers_Test.__name__)
+
+        # connect and test
+        for protocol in protocols:
+            self.output.logInfo('Checking honor cipher order for ' + protocol + ' ...')
+            try:
+                cipher_suites = cl_storage.get('ciphersuites@' + protocol, [])
+                if len(cipher_suites) < 2:
+                    self.output.logInfo(' * unable to test! less than 2 cipher suites found.')
+                    continue
+
+                top_cs = cipher_suites[0]
+                bottom_cs = cipher_suites[-1]
+
+                # re-order last cipher suite to the top position
+                cipher_suites = [last_cs] + cipher_suites[:-1]
+
+                tls_connection = TLS_Connection(connection)
+                tls_connection.setClientProtocolVersion(protocol)
+                tls_connection.setAvailableCipherSuites(cipher_suites)
+                tls_connection.setAvailableCompressionMethods(TLS_CompressionMethod_Database.getInstance().getAllCompressionMethods())
+                tls_connection.connect()
+
+                chosen_cipher_suite = tls_connection.getChosenCipherSuite()
+
+                honored_order = 'unknown'
+                if chosen_cipher_suite == top_cs:
+                    # good: order is honored
+                    honored_order = 'yes'
+                    self.output.logInfo(' * good: cipher suite order is honored')
+                elif chosen_cipher_suite == bottom_cs:
+                    # bad: order is not honored
+                    honored_order = 'no'
+                    self.output.logInfo(' * bad: cipher suite order is NOT honored')
+                else:
+                    # unknown state
+                    self.output.logInfo(' * unknown: cipher suite order seems to be randomized')
+
+                # store result
+                storage.append('honoredorder@' + protocol, honoredorder)
+
             except TLS_Alert_Exception as e:
                 if e.description != 'handshake_failure':
                     self.output.logError(str(e))
