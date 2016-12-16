@@ -102,7 +102,11 @@ class Plugin:
                 if dependencies is not None:
                     depsFulfilled = True
                     for dep in dependencies:
-                        if dep not in Plugin.instances:
+                        if dep not in Plugin.namedInstances:
+                            depsFulfilled = False
+                            break
+                        depInst = Plugin.namedInstances[dep]
+                        if depInst not in Plugin.instances:
                             depsFulfilled = False
                             break
                     if not depsFulfilled:
