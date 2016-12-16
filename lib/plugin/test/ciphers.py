@@ -76,8 +76,8 @@ class List_Ciphers_Test(Active_Test_Plugin):
                         # output result
                         storage.append('ciphersuites', chosen_cipher_suite)
 
-                        # TODO: this is just a workaround, we need to use the same instances for the same cipher suite
-                        cipher_suites = [x for x in cipher_suites if x.cs_id != chosen_cipher_suite.cs_id]
+                        # remove cipher suite from list
+                        cipher_suites.remove(chosen_cipher_suite)
             except TLS_Alert_Exception as e:
                 if e.description != 'handshake_failure':
                     self.output.logError(str(e))

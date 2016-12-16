@@ -42,13 +42,13 @@ class TLS_CipherSuite_Database():
 
         self.database = {}
         for ci in json_data:
-            self.database[binascii.unhexlify(ci)] = json_data[ci]
+            cs_id = binascii.unhexlify(ci)
+            self.database[cs_id] = TLS_CipherSuite(cs_id=cs_id, **json_data[ci])
 
     def getCipherSuite(self, cs_id):
-        if cs_id in self.database:
-            return TLS_CipherSuite(cs_id=cs_id, **self.database[cs_id])
-        else:
-            return TLS_CipherSuite(cs_id=cs_id, name='unknown (' + binascii.hexlify(cs_id) + ')')
+        if cs_id not in self.database:
+            self.database[cs_id] = TLS_CipherSuite(cs_id=cs_id, name='unknown (' + binascii.hexlify(cs_id) + ')')
+        return self.database[cs_id]
 
     def getAllCipherSuites(self):
         return [self.getCipherSuite(cs_id) for cs_id in sorted(self.database.keys())]
