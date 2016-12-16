@@ -167,7 +167,7 @@ class Check_Honor_Cipher_Order_Test(Active_Test_Plugin):
                         self.output.logInfo(' * unknown: cipher suite order seems to be randomized')
 
                     # store result
-                    sto.append('honoredorder@' + protocol, honoredorder)
+                    sto.append('honoredorder@' + protocol, honored_order)
 
             except TLS_Alert_Exception as e:
                 if e.description != 'handshake_failure':
