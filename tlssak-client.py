@@ -25,9 +25,6 @@ from lib.connection.tcpsocket import Connection_TCP_Socket
 from lib.plugin import Plugin
 from lib.plugin import Plugin_Storage
 from lib.plugin.test import Active_Test_Plugin
-import lib.plugin.output
-import lib.plugin.output.stdout
-import lib.plugin.test.ciphers
 
 # presets
 starttls_supported = ['smtp', 'ftp']
@@ -35,9 +32,7 @@ starttls_supported = ['smtp', 'ftp']
 def main():
     # load plugins
     plugins = Plugin.findPlugins()
-    # TODO: plugin dependencies!
-    for p in plugins:
-        Plugin.loadPlugin(p)
+    Plugin.loadPlugins(plugins)
 
     # prepare argument parser
     parser = argparse.ArgumentParser()

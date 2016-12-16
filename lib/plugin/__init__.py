@@ -15,11 +15,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# generic imports
+import inspect
+import os
+import os.path
+import sys
+
 # TLS SAK imports
 import lib.plugin
-
-import inspect
-import sys
 
 class Plugin:
     instances = []
@@ -37,33 +40,83 @@ class Plugin:
     def instancable(self):
         return False
 
+    def dependencies(self):
+        return []
+
+    def priority(self):
+        return 0
+
     @staticmethod
     def findPlugins(mod='lib.plugin'):
         inst = []
+
+        modPath = mod.replace('.','/')
+        if os.path.exists(modPath):
+            for directory in os.listdir(modPath):
+                if not os.path.isdir(os.path.join(modPath, directory)):
+                    continue
+                if directory.startswith(('.', '_')):
+                    continue
+
+                cll = Plugin.findPlugins(mod + '.' + directory)
+                for cl in cll:
+                    if cl not in inst:
+                        inst += [cl]
+
+            for fn in os.listdir(modPath):
+                if not os.path.isfile(os.path.join(modPath, fn)):
+                    continue
+                if not fn.endswith('.py'):
+                    continue
+                else:
+                    fn = fn[:-3]
+                if fn.startswith(('.', '_')):
+                    continue
+
+                cll = Plugin.findPlugins(mod + '.' + fn)
+                for cl in cll:
+                    if cl not in inst:
+                        inst += [cl]
+
         m = __import__(mod, fromlist=[''])
         for k in dir(m):
             attr = getattr(m, k)
-            if type(attr).__name__ == 'module':
-                try:
-                    cll = Plugin.findPlugins(mod + '.' + k)
-                    for cl in cll:
-                        if cl not in inst:
-                            inst += [cl]
-                except ImportError as e:
-                    pass
-            elif inspect.isclass(attr) and issubclass(attr, Plugin) and attr().instancable():
+            if inspect.isclass(attr) and issubclass(attr, Plugin) and attr().instancable():
                 if attr not in inst:
                     inst += [attr]
-            else:
-                pass
+
         return inst
 
     @staticmethod
-    def loadPlugin(plugin):
-        instance = plugin()
-        Plugin.instances += [instance]
-        Plugin.namedInstances[type(instance).__name__] = instance
-        return instance
+    def loadPlugins(plugins):
+        Plugin.instances = []
+        while True:
+            nextPlugin = None
+            nextPriority = sys.maxsize
+
+            for plugin in plugins:
+                if plugin.__name__ not in Plugin.namedInstances:
+                    Plugin.namedInstances[plugin.__name__] = plugin()
+                p = Plugin.namedInstances[plugin.__name__]
+                dependencies = p.dependencies()
+                if dependencies is not None:
+                    depsFulfilled = True
+                    for dep in dependencies:
+                        if dep not in Plugin.instances:
+                            depFulfilled = False
+                            break
+                    if not depsFulfilled:
+                        continue
+                if p.priority() < nextPriority:
+                    nextPlugin = plugin
+                    nextPriority = p.priority()
+
+            if nextPlugin is not None:
+                plugins.remove(nextPlugin)
+                instance = Plugin.namedInstances[nextPlugin.__name__]
+                Plugin.instances += [instance]
+            else:
+                break
 
     @staticmethod
     def executeLambda(pluginType=None, lambdaFunction=None):
