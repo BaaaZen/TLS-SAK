@@ -142,7 +142,7 @@ class Check_Honor_Cipher_Order_Test(Active_Test_Plugin):
                 bottom_cs = cipher_suites[-1]
 
                 # re-order last cipher suite to the top position
-                cipher_suites = [last_cs] + cipher_suites[:-1]
+                cipher_suites = [bottom_cs] + cipher_suites[:-1]
 
                 tls_connection = TLS_Connection(connection)
                 tls_connection.setClientProtocolVersion(protocol)
