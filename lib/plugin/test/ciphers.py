@@ -61,6 +61,7 @@ class List_Ciphers_Test(Active_Test_Plugin):
 
         # connect and test
         for protocol in protocols:
+            self.output.logInfo('Listing cipher suites with ' + protocol + ' ...')
             try:
                 cipher_suites = TLS_CipherSuite_Database.getInstance().getAllCipherSuites()
                 while True:
@@ -75,6 +76,7 @@ class List_Ciphers_Test(Active_Test_Plugin):
 
                         # output result
                         storage.append('ciphersuites', chosen_cipher_suite)
+                        self.output.logInfo(' * ' + chosen_cipher_suite.name)
 
                         # remove cipher suite from list
                         cipher_suites.remove(chosen_cipher_suite)
