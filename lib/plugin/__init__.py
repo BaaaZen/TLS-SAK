@@ -103,7 +103,7 @@ class Plugin:
                     depsFulfilled = True
                     for dep in dependencies:
                         if dep not in Plugin.instances:
-                            depFulfilled = False
+                            depsFulfilled = False
                             break
                     if not depsFulfilled:
                         continue
