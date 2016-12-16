@@ -31,7 +31,7 @@ class List_Ciphers_Test(Active_Test_Plugin):
     def init(self, storage, args):
         super().init(storage, args)
 
-        storage = storage.get(type(self).__name__)
+        sto = storage.get(type(self).__name__)
 
         # parse protocols
         if len(args.tlsprotocol) < 1:
@@ -50,14 +50,14 @@ class List_Ciphers_Test(Active_Test_Plugin):
                 if item not in protocols:
                     protocols += [item]
 
-        storage.put('protocols', protocols)
+        sto.put('protocols', protocols)
 
     def prepareArguments(self, parser):
         parser.add_argument('-tp', '--tls-protocol', default=[], help='choose protocol to connect with', choices=list(TLS_VERSIONS.keys()) + ['*'], dest='tlsprotocol', action='append')
 
     def execute(self, connection, storage):
-        storage = storage.get(type(self).__name__)
-        protocols = storage.get('protocols', [])
+        sto = storage.get(type(self).__name__)
+        protocols = sto.get('protocols', [])
 
         # connect and test
         for protocol in protocols:
@@ -75,7 +75,7 @@ class List_Ciphers_Test(Active_Test_Plugin):
                         chosen_cipher_suite = tls_connection.getChosenCipherSuite()
 
                         # output result
-                        storage.append('ciphersuites@' + protocol, chosen_cipher_suite)
+                        sto.append('ciphersuites@' + protocol, chosen_cipher_suite)
                         self.output.logInfo(' * ' + chosen_cipher_suite.name)
 
                         # remove cipher suite from list
@@ -99,7 +99,7 @@ class Check_Honor_Cipher_Order_Test(Active_Test_Plugin):
     def init(self, storage, args):
         super().init(storage, args)
 
-        storage = storage.get(type(self).__name__)
+        sto = storage.get(type(self).__name__)
 
         # parse protocols
         if len(args.tlsprotocol) < 1:
@@ -118,22 +118,22 @@ class Check_Honor_Cipher_Order_Test(Active_Test_Plugin):
                 if item not in protocols:
                     protocols += [item]
 
-        storage.put('protocols', protocols)
+        sto.put('protocols', protocols)
 
     def prepareArguments(self, parser):
         pass
 
     def execute(self, connection, storage):
-        storage = storage.get(type(self).__name__)
-        protocols = storage.get('protocols', [])
+        sto = storage.get(type(self).__name__)
+        protocols = sto.get('protocols', [])
 
-        cl_storage = storage.get(List_Ciphers_Test.__name__)
+        cl_sto = storage.get(List_Ciphers_Test.__name__)
 
         # connect and test
         for protocol in protocols:
             self.output.logInfo('Checking honor cipher order for ' + protocol + ' ...')
             try:
-                cipher_suites = cl_storage.get('ciphersuites@' + protocol, [])
+                cipher_suites = cl_sto.get('ciphersuites@' + protocol, [])
                 if len(cipher_suites) < 2:
                     self.output.logInfo(' * unable to test! less than 2 cipher suites found.')
                     continue
@@ -166,7 +166,7 @@ class Check_Honor_Cipher_Order_Test(Active_Test_Plugin):
                     self.output.logInfo(' * unknown: cipher suite order seems to be randomized')
 
                 # store result
-                storage.append('honoredorder@' + protocol, honoredorder)
+                sto.append('honoredorder@' + protocol, honoredorder)
 
             except TLS_Alert_Exception as e:
                 if e.description != 'handshake_failure':
