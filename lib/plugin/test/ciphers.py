@@ -138,35 +138,36 @@ class Check_Honor_Cipher_Order_Test(Active_Test_Plugin):
                     self.output.logInfo(' * unable to test! less than 2 cipher suites found.')
                     continue
 
-                top_cs = cipher_suites[0]
-                bottom_cs = cipher_suites[-1]
+                with connection:
+                    top_cs = cipher_suites[0]
+                    bottom_cs = cipher_suites[-1]
 
-                # re-order last cipher suite to the top position
-                cipher_suites = [bottom_cs] + cipher_suites[:-1]
+                    # re-order last cipher suite to the top position
+                    cipher_suites = [bottom_cs] + cipher_suites[:-1]
 
-                tls_connection = TLS_Connection(connection)
-                tls_connection.setClientProtocolVersion(protocol)
-                tls_connection.setAvailableCipherSuites(cipher_suites)
-                tls_connection.setAvailableCompressionMethods(TLS_CompressionMethod_Database.getInstance().getAllCompressionMethods())
-                tls_connection.connect()
+                    tls_connection = TLS_Connection(connection)
+                    tls_connection.setClientProtocolVersion(protocol)
+                    tls_connection.setAvailableCipherSuites(cipher_suites)
+                    tls_connection.setAvailableCompressionMethods(TLS_CompressionMethod_Database.getInstance().getAllCompressionMethods())
+                    tls_connection.connect()
 
-                chosen_cipher_suite = tls_connection.getChosenCipherSuite()
+                    chosen_cipher_suite = tls_connection.getChosenCipherSuite()
 
-                honored_order = 'unknown'
-                if chosen_cipher_suite == top_cs:
-                    # good: order is honored
-                    honored_order = 'yes'
-                    self.output.logInfo(' * good: cipher suite order is honored')
-                elif chosen_cipher_suite == bottom_cs:
-                    # bad: order is not honored
-                    honored_order = 'no'
-                    self.output.logInfo(' * bad: cipher suite order is NOT honored')
-                else:
-                    # unknown state
-                    self.output.logInfo(' * unknown: cipher suite order seems to be randomized')
+                    honored_order = 'unknown'
+                    if chosen_cipher_suite == top_cs:
+                        # good: order is honored
+                        honored_order = 'yes'
+                        self.output.logInfo(' * good: cipher suite order is honored')
+                    elif chosen_cipher_suite == bottom_cs:
+                        # bad: order is not honored
+                        honored_order = 'no'
+                        self.output.logInfo(' * bad: cipher suite order is NOT honored')
+                    else:
+                        # unknown state
+                        self.output.logInfo(' * unknown: cipher suite order seems to be randomized')
 
-                # store result
-                sto.append('honoredorder@' + protocol, honoredorder)
+                    # store result
+                    sto.append('honoredorder@' + protocol, honoredorder)
 
             except TLS_Alert_Exception as e:
                 if e.description != 'handshake_failure':
