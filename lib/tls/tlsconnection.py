@@ -117,7 +117,7 @@ class TLS_Connection:
             if type(pkg) is TLS_pkg_Alert:
                 raise TLS_Alert_Exception(pkg.getLevel(), pkg.getDescription())
             elif type(pkg) is not TLS_pkg_Handshake:
-                raise TLS_Protocol_Exception('handshake package excepted, but received other package')
+                raise TLS_Protocol_Exception('handshake package expected, but received other package')
 
             # this is a handshake package
             for hs in pkg.handshake:
