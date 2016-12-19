@@ -87,7 +87,7 @@ class TLS_Certificate:
 
     def parse(self, buffer):
         # TODO: this need to be fixed! we need more intelligence here
-        self.raw = raw
+        self.raw = buffer
         return self
 
     def toPEM(self):
