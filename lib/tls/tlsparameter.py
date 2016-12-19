@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # generic imports
+import base64
 import binascii
 
 # TLS SAK imports
@@ -85,4 +86,15 @@ class TLS_Certificate:
         pass
 
     def parse(self, buffer):
-        pass
+        # TODO: this need to be fixed! we need more intelligence here
+        self.raw = raw
+        return self
+
+    def toPEM(self):
+        if self.raw is None:
+            return None
+
+        pem = b'-----BEGIN CERTIFICATE-----\n'
+        pem += base64.encodebytes(self.raw)
+        pem += b'-----END CERTIFICATE-----'
+        return pem

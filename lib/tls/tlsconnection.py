@@ -91,6 +91,11 @@ class TLS_Connection:
             return self.server_protocol_version
         return None
 
+    def getServerCertificates(self):
+        if hasattr(self, 'server_certificates') and self.server_certificates is not None:
+            return self.server_certificates
+        return None
+
     # ---- internal methods ----
     def _readBuffer(self):
         buffer = self.connection.recv()
@@ -125,6 +130,8 @@ class TLS_Connection:
                     self.cipher_suite = hs.cipher_suite
                     self.compression_method = hs.compression_method
                     self.server_protocol_version = hs.version
+                elif type(hs) is TLS_Handshake_pkg_Certificate:
+                    self.server_certificates = hs.certificates
                 elif type(hs) is TLS_Handshake_pkg_ServerHelloDone:
                     serverHelloDoneReceived = True
                     break
