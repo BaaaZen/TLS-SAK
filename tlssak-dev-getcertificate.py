@@ -62,7 +62,6 @@ def main():
             i = 0
 
             for c in server_certificates:
-                # print('cert: ' + base64.b64encode(c.buffer))
                 i += 1
                 with open(args.host + '_' + str(i) + '.crt', 'wb') as f:
                     f.write(c.toPEM())
