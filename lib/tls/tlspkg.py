@@ -550,6 +550,7 @@ class TLS_Handshake_pkg_Certificate(TLS_Handshake_pkg):
 
         #  1 byte   handshake type      (0x0b = Certificate)
         #  3 bytes  size in bytes of Certificate package
+        #  3 bytes  size in bytes of list of certificates
         # .. bytes  content of list of certificates
 
         # - list of certificates -
@@ -565,7 +566,10 @@ class TLS_Handshake_pkg_Certificate(TLS_Handshake_pkg):
 
         certs_size = struct.pack('!I', len(certs_content))[-3:]
 
-        return self.PACKAGETYPE + certs_size + certs_content
+        pkg_content = certs_size + certs_content
+        pkg_size = struct.pack('!I', len(pkg_content))[-3:]
+
+        return self.PACKAGETYPE + pkg_size + pkg_content
 
     def parse(self, buffer):
         self.parser_assert_len(buffer, 4)
@@ -578,22 +582,25 @@ class TLS_Handshake_pkg_Certificate(TLS_Handshake_pkg):
         # set parse size
         self.setParseSize(4 + pkg_size)
 
+        [certs_size] = struct.unpack('!I', b'\x00' + pkg_content[0:3])
+        certs_content = pkg_content[3:3+certs_size]
+
         # pointer for current position in pkg_content
         pos = 0
         self.certificates = []
 
         # extract all certificates
-        while pos < pkg_size:
-            if pos + 3 >= pkg_size:
+        while pos < certs_size:
+            if pos + 3 >= certs_size:
                 raise TLS_Parser_Exception('invalid size of certificate list in certificate package')
 
             # size of next certificate
-            [crt_size] = struct.unpack('!I', b'\x00' + pkg_content[pos:pos+3])
-            if pos + 3 + crt_size > pkg_size:
+            [crt_size] = struct.unpack('!I', b'\x00' + certs_content[pos:pos+3])
+            if pos + 3 + crt_size > certs_size:
                 raise TLS_Parser_Exception('invalid size descriptor for certificate list in certificate package')
 
             # content of certificate
-            self.certificates += [TLS_Certificate().parse(pkg_content[pos+3:pos+3+crt_size])]
+            self.certificates += [TLS_Certificate().parse(certs_content[pos+3:pos+3+crt_size])]
 
             # increase pointer
             pos += 3 + crt_size
