@@ -90,6 +90,11 @@ class TLS_Certificate:
         self.raw = buffer
         return self
 
+    def toBER(self):
+        if self.raw is None:
+            return None
+        return self.raw
+
     def toPEM(self):
         if self.raw is None:
             return None
