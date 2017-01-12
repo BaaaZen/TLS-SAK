@@ -17,8 +17,14 @@
 
 # generic imports
 import argparse
-from pyasn1_modules import rfc2459
-from pyasn1.codec.ber import decoder
+#from pyasn1_modules import rfc2459
+#from pyasn1.codec.ber import decoder
+
+# temp
+import binascii
+#from lib.certificate.x509certificate import X509Certificate
+from lib.certificate import asn1
+from lib.certificate import asn1x509
 
 # TLS SAK imports
 from lib.connection import Connection_Exception
@@ -65,13 +71,21 @@ def main():
 
             for c in server_certificates:
                 i += 1
-                dec = decoder.decode(c.toBER(), asn1Spec=rfc2459.Certificate())[0]
-                cert = dec.getComponentByName("tbsCertificate")
+                #dec = decoder.decode(c.toBER(), asn1Spec=rfc2459.Certificate())[0]
+
+                grammar = asn1x509.X509()
+                stream = asn1.InputStream(c.toBER())
+                grammar.parse(stream)
+
+                #print(binascii.hexlify(c.toBER()))
+                #asnObj = asn1.BaseElement.decrypt(c.toBER())
+                #cert = X509Certificate(dec)
+                # cert = dec.getComponentByName("tbsCertificate")
                 # print(dec.prettyPrint())
                 # print(str(dec.getComponentByName("tbsCertificate")))
                 # print(str(dec.getComponentByName('signatureAlgorithm')))
-                for x in cert.getComponentByName('subject'):
-                    print('x: ' + x.prettyPrint())
+                # for x in cert.getComponentByName('subject'):
+                    # print('x: ' + x.prettyPrint())
 
                 with open(args.host + '_' + str(i) + '.crt', 'wb') as f:
                     f.write(c.toPEM())
