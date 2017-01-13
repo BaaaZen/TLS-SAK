@@ -18,6 +18,7 @@ class X509(asn1.ASN1):
         tbscertificate = asn1.Sequence()
         tbscertificate.addParseItem('version', self.pVersion(), index=0, explicit=True, default=1)
         tbscertificate.addParseItem('serialNumber', self.pCertificateSerialNumber())
+        tbscertificate.addParseItem('signature', self.pAlgorithmIdentifier())
         tbscertificate.addParseItem('issuer', self.pName())
         tbscertificate.addParseItem('validity', self.pValidity())
         tbscertificate.addParseItem('subject', self.pName())
@@ -43,8 +44,8 @@ class X509(asn1.ASN1):
 
     def pTime(self):
         time = asn1.Choice()
-        time.addParseItem('utcTime', self.pUTCTime())
-        time.addParseItem('generalTime', self.pGeneralizedTime())
+        time.addParseItem('utcTime', asn1.UTCTime())
+        time.addParseItem('generalTime', asn1.GeneralizedTime())
         return time
 
     def pUniqueIdentifier(self):
@@ -57,7 +58,7 @@ class X509(asn1.ASN1):
 
     def pExtensions(self):
         extensions = asn1.SequenceOf()
-        extensions.setParseValidSize(1,0)
+        extensions.setParseValidSize(1, None)
         extensions.setParseItem(self.pExtension())
 
     def pExtensions(self):
@@ -65,6 +66,13 @@ class X509(asn1.ASN1):
         extension.addParseItem('extnID', asn1.ObjectIdentifier())
         extension.addParseItem('critical', asn1.Boolean(), default=False)
         extension.addParseItem('extnValue', asn1.OctetString())
+
+    # definition in 4.1.1.2
+    def pAlgorithmIdentifier(self):
+        algorithmidentifier = asn1.Sequence()
+        algorithmidentifier.addParseItem('algorithm', asn1.ObjectIdentifier())
+        algorithmidentifier.addParseItem('parameters', asn1.Any(), optional=True)
+        return algorithmidentifier
 
     # definition in 4.1.2.4
     def pName(self):
@@ -79,7 +87,7 @@ class X509(asn1.ASN1):
 
     def pRelativeDistinguishedName(self):
         relativedistinguishedname = asn1.SetOf()
-        relativedistinguishedname.setParseValidSize(1,0)
+        relativedistinguishedname.setParseValidSize(1, None)
         relativedistinguishedname.setParseItem(self.pAttributeTypeAndValue())
         return relativedistinguishedname
 

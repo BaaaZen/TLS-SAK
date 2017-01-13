@@ -73,6 +73,8 @@ def main():
                 i += 1
                 #dec = decoder.decode(c.toBER(), asn1Spec=rfc2459.Certificate())[0]
 
+                print(binascii.hexlify(c.toBER()))
+
                 grammar = asn1x509.X509()
                 stream = asn1.InputStream(c.toBER())
                 grammar.parse(stream)
