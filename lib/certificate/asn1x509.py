@@ -55,17 +55,20 @@ class X509(asn1.ASN1):
         subjectpublickeyinfo = asn1.Sequence()
         subjectpublickeyinfo.addParseItem('algorithm', self.pAlgorithmIdentifier())
         subjectpublickeyinfo.addParseItem('subjectPublicKey', asn1.BitString())
+        return subjectpublickeyinfo
 
     def pExtensions(self):
         extensions = asn1.SequenceOf()
         extensions.setParseValidSize(1, None)
         extensions.setParseItem(self.pExtension())
+        return extensions
 
-    def pExtensions(self):
+    def pExtension(self):
         extension = asn1.Sequence()
         extension.addParseItem('extnID', asn1.ObjectIdentifier())
         extension.addParseItem('critical', asn1.Boolean(), default=False)
         extension.addParseItem('extnValue', asn1.OctetString())
+        return extension
 
     # definition in 4.1.1.2
     def pAlgorithmIdentifier(self):

@@ -45,6 +45,12 @@ class InputStream:
         self._ptr += l
         return s
 
+    def skipBytes(self):
+        if self.length() == -1:
+            return
+        while self.hasMoreBytesToRead():
+            self.readByte()
+
     def hasMoreBytesToRead(self):
         return True
 
@@ -220,7 +226,7 @@ class BaseElement:
             return DelimitedInputStream(stream, l)
 
     def parse(self, stream, softfail=False, tag=None):
-        print('parsing [' + self.__class__.__name__ + ']')
+        # print('parsing [' + self.__class__.__name__ + ']')
         if tag is None:
             tag = self.getTagValue()
         rtag = stream.readByte()
@@ -228,6 +234,7 @@ class BaseElement:
         # if type(stream) is BufferedInputStream:
         #     if stream.isMarked():
         #         stream.unmark()
+        # print('tag compare: ' + hex(rtag) + ' ?= ' + hex(tag))
         if tag != rtag:
             if softfail:
                 return False
@@ -235,8 +242,9 @@ class BaseElement:
                 raise ParserException('invalid tag found: ' + hex(rtag) + ' instead of ' + hex(tag))
         #print(self.__class__.__name__ + ' [' + str(stream.length()) + ']')
         subStream = self.parsePacket(stream)
-        print(' -> stream: ' + subStream.__class__.__name__ + ' [' + str(subStream.length()) + ']')
+        # print(' -> stream: ' + subStream.__class__.__name__ + ' [' + str(subStream.length()) + ']')
         self.parseContent(subStream)
+        subStream.skipBytes()
         return True
 
     def __str__(self):
@@ -456,11 +464,13 @@ class UTF8String(BaseElement):
 
 
 class UTCTime(BaseElement):
-    pass
+    def getTagValue(self):
+        return 0x17
 
 
 class GeneralizedTime(BaseElement):
-    pass
+    def getTagValue(self):
+        return 0x18
 
 
 class Sequence(BaseElement):
@@ -495,7 +505,7 @@ class Sequence(BaseElement):
             raise ParserException('invalid grammar: implicit or explicit may only be used in combination with an index!')
 
         item['optional'] = optional
-        if default is not None:
+        if default != None:
             item['default'] = default
             item['optional'] = True
 
@@ -515,14 +525,16 @@ class Sequence(BaseElement):
                     dtag |= 0xA0
                 psucc = item['subElement'].parse(stream, softfail=True, tag=dtag)
             else:
-                psucc = item['subElement'].parse(stream)
+                # print(str(item))
+                # print(str(stream))
+                # print('-----preparse-----')
+                psucc = item['subElement'].parse(stream, softfail=True)
 
             if not psucc:
-                if 'optional' not in item:
-                    raise ParserException('parser error: item not found')
-                else:
+                if 'optional' in item:
                     stream.goBack()
                     continue
+                raise ParserException('parser error: item not found')
 
 
 class SequenceOf(BaseElement):
@@ -551,7 +563,7 @@ class SequenceOf(BaseElement):
 
     def parseContent(self, stream):
         while stream.hasMoreBytesToRead():
-            print(str(self._parseTemplateElement))
+            # print(str(self._parseTemplateElement))
             item = self._parseTemplateElement.clone()
             item.parse(stream)
 
@@ -571,7 +583,7 @@ class Any(BaseElement):
         self._rawContent = stream.readBytes(stream.length())
 
     def parse(self, stream, softfail=False, tag=None):
-        print('parsing [' + self.__class__.__name__ + ']')
+        # print('parsing [' + self.__class__.__name__ + ']')
         rtag = stream.readByte()
         if tag is not None:
             if tag != rtag:
@@ -582,6 +594,7 @@ class Any(BaseElement):
 
         subStream = self.parsePacket(stream)
         self.parseContent(subStream)
+        subStream.skipBytes()
         return True
 
     def decodeAs(self, c):
@@ -611,7 +624,7 @@ class Choice(BaseElement):
         self._parseSubItems += [item]
 
     def parse(self, stream, softfail=False, tag=None):
-        print('parsing [' + self.__class__.__name__ + ']')
+        # print('parsing [' + self.__class__.__name__ + ']')
         stream = BufferedInputStream(stream)
         for item in self._parseSubItems:
             stream.mark()
