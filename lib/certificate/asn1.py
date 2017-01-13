@@ -566,6 +566,11 @@ class SequenceOf(BaseElement):
             # print(str(self._parseTemplateElement))
             item = self._parseTemplateElement.clone()
             item.parse(stream)
+            self._items += [item]
+        if self._parseValidSizeMin != None and len(self._items) < self._parseValidSizeMin:
+            raise ParserException(self.__class__.__name__ + ' expects at least ' + str(self._parseValidSizeMin) + ' elements, but got ' + str(len(self._items)))
+        if self._parseValidSizeMax != None and len(self._items) > self._parseValidSizeMax:
+            raise ParserException(self.__class__.__name__ + ' expects at most ' + str(self._parseValidSizeMax) + ' elements, but got ' + str(len(self._items)))
 
 
 class SetOf(SequenceOf):
