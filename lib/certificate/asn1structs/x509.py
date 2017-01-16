@@ -2,6 +2,14 @@ from lib.certificate import asn1
 
 # definition from https://tools.ietf.org/html/rfc5280
 class X509(asn1.ASN1):
+    oids = {
+        '1.2.840.113549.1.1.1': 'rsaEncryption',
+        '1.2.840.113549.1.1.11': 'sha256WithRSAEncryption'
+    }
+
+    def __init__(self):
+        super().__init__(X509.oids)
+
     def pRoot(self):
         return self.pCertificate()
 
@@ -65,7 +73,7 @@ class X509(asn1.ASN1):
 
     def pExtension(self):
         extension = asn1.Sequence()
-        extension.addParseItem('extnID', asn1.ObjectIdentifier())
+        extension.addParseItem('extnID', asn1.ObjectIdentifier(self))
         extension.addParseItem('critical', asn1.Boolean(), default=False)
         extension.addParseItem('extnValue', asn1.OctetString())
         return extension
@@ -73,7 +81,7 @@ class X509(asn1.ASN1):
     # definition in 4.1.1.2
     def pAlgorithmIdentifier(self):
         algorithmidentifier = asn1.Sequence()
-        algorithmidentifier.addParseItem('algorithm', asn1.ObjectIdentifier())
+        algorithmidentifier.addParseItem('algorithm', asn1.ObjectIdentifier(self))
         algorithmidentifier.addParseItem('parameters', asn1.Any(), optional=True)
         return algorithmidentifier
 
@@ -101,7 +109,7 @@ class X509(asn1.ASN1):
         return attributetypeandvalue
 
     def pAttributeType(self):
-        return asn1.ObjectIdentifier()
+        return asn1.ObjectIdentifier(self)
 
     def pAttributeValue(self):
         return asn1.Any()

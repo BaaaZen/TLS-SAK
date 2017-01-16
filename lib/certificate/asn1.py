@@ -41,7 +41,6 @@ class InputStream:
         if self._ptr >= len(self._s):
             return None
         s = self._s[self._ptr:self._ptr+l]
-        #print('read: ' + str(self._ptr) + '+' + str(l) + ' [' + str(s) + ']')
         self._ptr += l
         return s
 
@@ -67,17 +66,13 @@ class DelimitedInputStream(InputStream):
         self._len = len
 
     def readByte(self):
-        #print('1ptr [' + self.__class__.__name__ + ']: ' + str(self._ptr))
         if not self.hasMoreBytesToRead():
-            #print('eof (' + str(self._len) + ')')
             return None
         self._ptr += 1
         return self._stream.readByte()
 
     def readBytes(self, l=1):
-        #print('xptr [' + self.__class__.__name__ + ']: ' + str(self._ptr))
         if not self.hasMoreBytesToRead():
-            #print('eof (' + str(self._len) + ')')
             return None
         if self._len != -1 and self._ptr + l > self._len:
             l = self._len - self._ptr
@@ -87,7 +82,6 @@ class DelimitedInputStream(InputStream):
     def hasMoreBytesToRead(self):
         if self._len == -1:
             return True
-#        print('      [decide: ' + str(self._ptr) + ' < ' + str(self._len) + ' ?]')
         return self._ptr < self._len
 
     def length(self):
@@ -168,18 +162,83 @@ class BufferedInputStream(InputStream):
         x = [self.__class__.__name__ + '[' + str(self._ptr) + '/' + str(self._record) + ']'] + x
         return '\n'.join(x)
 
+class LoggingInputStream(InputStream):
+    def __init__(self, stream):
+        self._stream = stream
+        self._buffer = b''
+
+    def readBytes(self, l=1):
+        b = self._stream.readBytes(l)
+        if b != None:
+            self._buffer += b
+        return b
+
+    def hasMoreBytesToRead(self):
+        return self._stream.hasMoreBytesToRead()
+
+    def length(self):
+        return self._stream.length()
+
+    def __str__(self):
+        x = str(self._stream).split('\n')
+        x = [' ' + y for y in x]
+        x = [self.__class__.__name__ + '[' + str(self._ptr) + '/' + str(self._record) + ']'] + x
+        return '\n'.join(x)
+
+    def getLog(self):
+        return self._buffer
+
 
 class ASN1:
+    def __init__(self, oids):
+        self._oids = oids
+
     def pRoot(self):
         pass
+
+    def resolveOID(self, oid):
+        if oid in self._oids:
+            return self._oids[oid]
+        return oid
 
     def parse(self, stream):
         tree = self.pRoot()
         tree.parse(stream)
+        return tree
 
 
 
 class BaseElement:
+    def __init__(self):
+        self._tag = self.getTagValue()
+        self._size = b''
+        self._rawContent = b''
+        self._postAppend = b''
+        self._logContent = True
+
+    def setRawContent(self, content):
+        self._rawContent = content
+
+    def toBERsize(self, content):
+        if self._size == b'\x80':
+            return b'\x80' + content + b'\x00\x00'
+        else:
+            if len(content) == 0:
+                return b'\x00'
+            elif len(content) < 0x80:
+                return bytes([len(content)]) + content
+            else:
+                l = len(content)
+                s = []
+                while l > 0:
+                    s = [l % 256] + s
+                    l >>= 8
+                s = [0x80 | len(s)] + s
+                return bytes(s) + content
+
+    def toBER(self):
+        return bytes([self._tag]) + self.toBERsize(self._rawContent)
+
     def getTagValue(self):
         # abstract method, needs to be implemented by each object type
         pass
@@ -197,9 +256,11 @@ class BaseElement:
         fb = stream.readByte()
         if fb is None:
             raise ParserException('missing object length: end of file')
+        self._size = bytes([fb])
 
         if fb == 0x80:
             # length is not defined, so we need to cache
+            self._postAppend = b'\x00\x00'
             cache = stream.readBytes(2)
             if cache is None:
                 raise ParserException('missing content for caching: end of file')
@@ -219,6 +280,7 @@ class BaseElement:
             # following length field
             flen = fb & 0x7F
             lb = stream.readBytes(flen)
+            self._size += lb
             l = 0
             for b in lb:
                 l <<= 8
@@ -226,9 +288,10 @@ class BaseElement:
             return DelimitedInputStream(stream, l)
 
     def parse(self, stream, softfail=False, tag=None):
-        # print('parsing [' + self.__class__.__name__ + ']')
         if tag is None:
             tag = self.getTagValue()
+        self._tag = tag
+
         rtag = stream.readByte()
         # TODO: is that a good idea?
         # if type(stream) is BufferedInputStream:
@@ -240,19 +303,28 @@ class BaseElement:
                 return False
             else:
                 raise ParserException('invalid tag found: ' + hex(rtag) + ' instead of ' + hex(tag))
-        #print(self.__class__.__name__ + ' [' + str(stream.length()) + ']')
         subStream = self.parsePacket(stream)
-        # print(' -> stream: ' + subStream.__class__.__name__ + ' [' + str(subStream.length()) + ']')
+        if self._logContent:
+            subStream = LoggingInputStream(subStream)
         self.parseContent(subStream)
         subStream.skipBytes()
+        if self._logContent:
+            self._rawContent = subStream.getLog()
         return True
 
     def __str__(self):
         return '(unknown)'
 
 
-class TransparentElement(BaseElement):
+class ConstructedElement(BaseElement):
+    def __init__(self):
+        super().__init__()
+        self._logContent = False
+
+
+class TransparentElement(ConstructedElement):
     def __init__(self, subElement):
+        super().__init__()
         self._subElement = subElement
 
     def clone(self):
@@ -261,23 +333,30 @@ class TransparentElement(BaseElement):
     def parseContent(self, stream):
         self._subElement.parse(stream)
 
+    def toBER(self):
+        return bytes([self._tag]) + self.toBERsize(self._subElement.toBER())
+
 
 class BitString(BaseElement):
     def __init__(self):
-        self._value = b''
+        super().__init__()
 
     def getTagValue(self):
         return 0x03
 
     def parseContent(self, stream):
-        self._value = stream.readBytes(stream.length())
+        self._rawContent = stream.readBytes(stream.length())
+
+    def getValue(self):
+        return self._rawContent
 
     def __str__(self):
-        return 'BIT STRING(' + binascii.hexlify(self._value).decode('utf-8') + ')'
+        return 'BIT STRING(' + binascii.hexlify(self._rawContent).decode('utf-8') + ')'
 
 
 class Boolean(BaseElement):
     def __init__(self):
+        super().__init__()
         self._value = False
 
     def getTagValue(self):
@@ -286,7 +365,8 @@ class Boolean(BaseElement):
     def parseContent(self, stream):
         if stream.length() != 1:
             raise ParserException('BOOLEAN object has invalid length: ' + str(stream.length()) + ' instead of 1')
-        v = stream.readByte()
+        self._rawContent = stream.readBytes(1)
+        v = self._rawContent[0]
         if v is None:
             raise ParserException('missing content: end of file')
 
@@ -301,6 +381,7 @@ class Boolean(BaseElement):
 
 class Integer(BaseElement):
     def __init__(self):
+        super().__init__()
         self._value = 0
         self._parseValidValues = None
 
@@ -313,7 +394,8 @@ class Integer(BaseElement):
     def parseContent(self, stream):
         if stream.length() < 1:
             raise ParserException('INTEGER object has invalid length: ' + str(stream.length()) + ' instead of at least 1')
-        v = stream.readBytes(stream.length())
+        self._rawContent = stream.readBytes(stream.length())
+        v = self._rawContent
         if v is None:
             raise ParserException('missing content: end of file')
 
@@ -343,7 +425,7 @@ class Integer(BaseElement):
 
 class Null(BaseElement):
     def __init__(self):
-        pass
+        super().__init__()
 
     def getTagValue(self):
         return 0x05
@@ -357,7 +439,9 @@ class Null(BaseElement):
 
 
 class ObjectIdentifier(BaseElement):
-    def __init__(self):
+    def __init__(self, resolver=None):
+        super().__init__()
+        self._resolver = resolver
         self._oid = None
 
     def getTagValue(self):
@@ -373,9 +457,10 @@ class ObjectIdentifier(BaseElement):
         fb = stream.readByte()
         if fb is None:
             raise ParserException('missing content: end of file')
+        self._rawContent += bytes([fb])
 
         # parse first byte of oid
-        first = fb / 40
+        first = int(fb / 40)
         second = fb % 40
         if first > 2:
             oid += [2]
@@ -399,6 +484,7 @@ class ObjectIdentifier(BaseElement):
             if b == None:
                 #print('NONE2: ' + stream.__class__.__name__)
                 raise ParserException('missing content: end of file')
+            self._rawContent += bytes([b])
 
             if b & 0x80 != 0:
                 if b == 0x80 and subValue == 0:
@@ -421,30 +507,38 @@ class ObjectIdentifier(BaseElement):
 
         self._oid = '.'.join([str(x) for x in oid])
 
+    def getResolvedOID(self, resolver=None):
+        if resolver != None:
+            return resolver.resolveOID(self._oid)
+        elif self._resolver != None:
+            return self._resolver.resolveOID(self._oid)
+        return self._oid
+
     def getOID(self):
         return self._oid
 
-    def __str__(self):
-        return 'OBJECT IDENTIFIER(' + self._oid + ')'
+    # def __str__(self):
+    #     return 'OBJECT IDENTIFIER'
 
 
 class OctetString(BaseElement):
     def __init__(self):
+        super().__init__()
         self._content = None
 
     def getTagValue(self):
         return 0x04
 
     def parseContent(self, stream):
-        self._content = stream.readBytes(stream.length())
-        if self._content is None:
+        self._rawContent = stream.readBytes(stream.length())
+        if self._rawContent is None:
             raise ParserException('missing content: end of file')
 
     def getOctetString(self):
         return self._content
 
-    def __str__(self):
-        return 'OCTET STRING(' + binascii.hexlify(self._content).decrypt('utf-8') + ')'
+    # def __str__(self):
+    #     return 'OCTET STRING(' + binascii.hexlify(self._content).decrypt('utf-8') + ')'
 
 
 class BMPString(BaseElement):
@@ -464,18 +558,26 @@ class UTF8String(BaseElement):
 
 
 class UTCTime(BaseElement):
+    def __init__(self):
+        super().__init__()
+
     def getTagValue(self):
         return 0x17
 
 
 class GeneralizedTime(BaseElement):
+    def __init__(self):
+        super().__init__()
+
     def getTagValue(self):
         return 0x18
 
 
-class Sequence(BaseElement):
+class Sequence(ConstructedElement):
     def __init__(self):
+        super().__init__()
         self._parseSubItems = []
+        self._itemsOrder = []
         self._items = {}
 
     def getTagValue(self):
@@ -487,6 +589,13 @@ class Sequence(BaseElement):
             it['subElement'] = it['subElement'].clone()
             cl._parseSubItems += [it]
         return cl
+
+    def addItem(self, subElement):
+        s = str(subElement)
+        while s in self._itemsOrder:
+            s += '#'
+        self._items[s] = subElement
+        self._itemsOrder += [s]
 
     def addParseItem(self, name, subElement, index=None, explicit=None, implicit=None, optional=False, default=None):
         item = {}
@@ -511,6 +620,11 @@ class Sequence(BaseElement):
 
         self._parseSubItems += [item]
 
+    def get(self, name):
+        if name in self._items:
+            return self._items[name]
+        return None
+
     def parseContent(self, stream):
         stream = BufferedInputStream(stream)
         for item in self._parseSubItems:
@@ -530,15 +644,25 @@ class Sequence(BaseElement):
                 # print('-----preparse-----')
                 psucc = item['subElement'].parse(stream, softfail=True)
 
-            if not psucc:
+            if psucc:
+                self._items[item['name']] = item['subElement']
+                self._itemsOrder += [item['name']]
+            else:
                 if 'optional' in item:
                     stream.goBack()
                     continue
                 raise ParserException('parser error: item not found')
 
+    def toBER(self):
+        c = b''
+        for item in self._itemsOrder:
+            c += self._items[item].toBER()
+        return bytes([self._tag]) + self.toBERsize(c)
 
-class SequenceOf(BaseElement):
+
+class SequenceOf(ConstructedElement):
     def __init__(self):
+        super().__init__()
         self._parseTemplateElement = None
         self._items = []
         self._parseValidSizeMin = None
@@ -572,6 +696,11 @@ class SequenceOf(BaseElement):
         if self._parseValidSizeMax != None and len(self._items) > self._parseValidSizeMax:
             raise ParserException(self.__class__.__name__ + ' expects at most ' + str(self._parseValidSizeMax) + ' elements, but got ' + str(len(self._items)))
 
+    def toBER(self):
+        c = b''
+        for item in self._items:
+            c += item.toBER()
+        return bytes([self._tag]) + self.toBERsize(c)
 
 class SetOf(SequenceOf):
     def getTagValue(self):
@@ -580,37 +709,37 @@ class SetOf(SequenceOf):
 
 class Any(BaseElement):
     def __init__(self):
-        self._rawTag = None
-        self._rawContent = None
+        super().__init__()
         self._element = None
 
     def parseContent(self, stream):
         self._rawContent = stream.readBytes(stream.length())
 
     def parse(self, stream, softfail=False, tag=None):
-        # print('parsing [' + self.__class__.__name__ + ']')
-        rtag = stream.readByte()
+        self._tag = stream.readByte()
         if tag is not None:
-            if tag != rtag:
+            if tag != self._tag:
                 if softfail:
                     return False
                 else:
                     raise ParserException('invalid tag found: ' + hex(rtag) + ' instead of ' + hex(tag))
 
-        subStream = self.parsePacket(stream)
+        subStream = LoggingInputStream(self.parsePacket(stream))
         self.parseContent(subStream)
         subStream.skipBytes()
+        self._rawContent = subStream.getLog()
         return True
 
     def decodeAs(self, c):
         self._element = c()
-        if self._rawTag != self._element.getTagValue():
+        if self._tag != self._element.getTagValue():
             raise ParserException('decode error: class ' + str(c) + ' doesn\'t fit tag value')
         self._element.parseContent(InputStream(self._rawContent))
 
 
-class Choice(BaseElement):
+class Choice(ConstructedElement):
     def __init__(self):
+        super().__init__()
         self._parseSubItems = []
         self._item = None
 
@@ -629,7 +758,6 @@ class Choice(BaseElement):
         self._parseSubItems += [item]
 
     def parse(self, stream, softfail=False, tag=None):
-        # print('parsing [' + self.__class__.__name__ + ']')
         stream = BufferedInputStream(stream)
         for item in self._parseSubItems:
             stream.mark()
@@ -643,3 +771,6 @@ class Choice(BaseElement):
                 continue
 
         raise ParserException('parser error: no valid choice found')
+
+    def toBER(self):
+        return self._item.toBER()
