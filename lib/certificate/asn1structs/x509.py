@@ -113,3 +113,13 @@ class X509(asn1.ASN1):
 
     def pAttributeValue(self):
         return asn1.Any()
+
+    # definition in A.1
+    def pDirectoryString(self):
+        directorystring = asn1.Choice()
+        # directorystring.addParseItem('teletexString', ...)
+        directorystring.addParseItem('printableString', asn1.PrintableString())
+        # directorystring.addParseItem('universalString', asn1.UniversalString())
+        directorystring.addParseItem('utf8String', asn1.UTF8String())
+        directorystring.addParseItem('bmpString', asn1.BMPString())
+        return directorystring

@@ -25,8 +25,8 @@ from lib.certificate.asn1structs import x509
 
 class X509CertificateStructure:
     def __init__(self, stream):
-        struct = x509.X509()
-        self._x509certificate = struct.parse(stream)
+        self._struct = x509.X509()
+        self._x509certificate = self._struct.parse(stream)
 
     def _root(self):
         return self._x509certificate
@@ -44,13 +44,13 @@ class X509CertificateStructure:
         return self._tbsCertificate().get('signature')
 
     def _issuer(self):
-        return self._tbsCertificate().get('issuer')
+        return self._tbsCertificate().get('issuer').getChoice()
 
     def _validity(self):
         return self._tbsCertificate().get('validity')
 
     def _subject(self):
-        return self._tbsCertificate().get('subject')
+        return self._tbsCertificate().get('subject').getChoice()
 
     def _subjectPublicKeyInfo(self):
         return self._tbsCertificate().get('subjectPublicKeyInfo')
@@ -82,6 +82,22 @@ class X509Certificate(X509CertificateStructure):
     def __init__(self, stream):
         super().__init__(stream)
 
+    def _resolveNameObject(self, name):
+        if type(name) is not asn1.SequenceOf:
+            return None
+        r = ''
+        for seqRDNS in name:
+            for item in seqRDNS:
+                if type(item) is not asn1.Sequence:
+                    continue
+                if not item.get('value').hasDecoder():
+                    item.get('value').setDecoder(self._struct.pDirectoryString())
+                rs = item.get('type').getResolvedOID() + '=' + item.get('value').getElement().getChoice().getString()
+                if r != '':
+                    r += '/'
+                r += rs
+        return r
+
     def getSignatureAlgorithm(self):
         return self._signatureAlgorithm().get('algorithm').getResolvedOID()
 
@@ -98,7 +114,7 @@ class X509Certificate(X509CertificateStructure):
         return self._signature().get('algorithm').getResolvedOID()
 
     def getIssuer(self):
-        pass
+        return self._resolveNameObject(self._issuer())
 
     def getValidityNotBefore(self):
         pass
@@ -107,7 +123,7 @@ class X509Certificate(X509CertificateStructure):
         pass
 
     def getSubject(self):
-        pass
+        return self._resolveNameObject(self._subject())
 
     def getSubjectPublicKeyAlgorithm(self):
         return self._subjectPublicKeyAlgorithm().get('algorithm').getResolvedOID()

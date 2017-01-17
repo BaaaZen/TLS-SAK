@@ -543,20 +543,44 @@ class OctetString(BaseElement):
     #     return 'OCTET STRING(' + binascii.hexlify(self._content).decrypt('utf-8') + ')'
 
 
-class BMPString(BaseElement):
-    pass
+class StringElement(BaseElement):
+    def __init__(self):
+        super().__init__()
+
+    def getString(self):
+        return self._rawContent.decode('utf-8')
 
 
-class IA5String(BaseElement):
-    pass
+class BMPString(StringElement):
+    def __init__(self):
+        super().__init__()
+
+    def getTagValue(self):
+        return 0x1e
 
 
-class PrintableString(BaseElement):
-    pass
+class IA5String(StringElement):
+    def __init__(self):
+        super().__init__()
+
+    def getTagValue(self):
+        return 0x16
 
 
-class UTF8String(BaseElement):
-    pass
+class PrintableString(StringElement):
+    def __init__(self):
+        super().__init__()
+
+    def getTagValue(self):
+        return 0x13
+
+
+class UTF8String(StringElement):
+    def __init__(self):
+        super().__init__()
+
+    def getTagValue(self):
+        return 0x0c
 
 
 class UTCTime(BaseElement):
@@ -665,10 +689,22 @@ class Sequence(ConstructedElement):
 class SequenceOf(ConstructedElement):
     def __init__(self):
         super().__init__()
+        self._iterIndex = 0
         self._parseTemplateElement = None
         self._items = []
         self._parseValidSizeMin = None
         self._parseValidSizeMax = None
+
+    def __iter__(self):
+        self._iterIndex = 0
+        return self
+
+    def __next__(self):
+        if self._iterIndex >= len(self._items):
+            raise StopIteration
+        item = self._items[self._iterIndex]
+        self._iterIndex += 1
+        return item
 
     def getTagValue(self):
         return 0x30
@@ -738,11 +774,16 @@ class Any(BaseElement):
             else:
                 raise ParserException(e.msg + '\ncaught in ' + self.__class__.__name__ + ' with ' + str(stream)) from None
 
-    def decodeAs(self, c):
-        self._element = c()
-        if self._tag != self._element.getTagValue():
-            raise ParserException('decode error: class ' + str(c) + ' doesn\'t fit tag value')
-        self._element.parseContent(InputStream(self._rawContent))
+    def getElement(self):
+        return self._element
+
+    def setDecoder(self, p):
+        self._element = p
+        if self._element != None:
+            self._element.parse(InputStream(self.toBER()))
+
+    def hasDecoder(self):
+        return self._element != None
 
 
 class Choice(ConstructedElement):
@@ -764,6 +805,9 @@ class Choice(ConstructedElement):
         item['subElement'] = subElement
 
         self._parseSubItems += [item]
+
+    def getChoice(self):
+        return self._item
 
     def parse(self, stream, softfail=False, tag=None):
         stream = BufferedInputStream(stream)
