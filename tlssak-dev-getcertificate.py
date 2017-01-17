@@ -21,11 +21,11 @@ import argparse
 #from pyasn1.codec.ber import decoder
 
 # temp
-import binascii
-#from lib.certificate.x509certificate import X509Certificate
-from lib.certificate import asn1
-from lib.certificate import x509certificate
-from lib.certificate.asn1structs import x509
+# import binascii
+
+# from lib.certificate import asn1
+from lib.certificate import certstore
+# from lib.certificate.asn1structs import x509
 
 # TLS SAK imports
 from lib.connection import Connection_Exception
@@ -69,11 +69,18 @@ def main():
 
             server_certificates = tls_connection.getServerCertificates()
 
-            certs = []
-            for c in server_certificates:
-                certs += [x509certificate.X509Certificate(c.toBER())]
 
-            certs[0].verifySignature(certs[1])
+            temp_store = certstore.CertificateStore()
+            root_store = certstore.CertificateStore()
+            meta_store = certstore.CertificateStore()
+
+            root_store.addCertificatesFromDirectory('/etc/ssl/certs/')
+
+            for c in server_certificates:
+                temp_store.addCertificateFromBER(c.toBER())
+                #certs += [x509certificate.X509Certificate(c.toBER())]
+
+#            certs[0].verifySignature(certs[1])
 
 
     except TLS_Alert_Exception as e:

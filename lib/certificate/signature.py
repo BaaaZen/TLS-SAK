@@ -15,6 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# temp
+import binascii
+
 import Crypto
 from Crypto.Hash import SHA
 from Crypto.Hash import SHA256
@@ -29,6 +32,8 @@ class HashAlgorithm:
 
     def oid(self):
         pass
+
+
 
     def hash(self, msg):
         m = self.new()
@@ -62,14 +67,14 @@ class SHA256(HashAlgorithm):
         return Crypto.Hash.SHA256.new()
 
     def oid(self):
-        return b'\x60\x86\x48\x01\x65\x03\x04\x02\x01'
+        return b'\x60\x86\x48\x01\x65\x03\x04\x02\x01' # SHA256
 
 class SHA1(HashAlgorithm):
     def new(self):
         return Crypto.Hash.SHA.new()
 
     def oid(self):
-        return b'\x2b\x0e\x03\x02\x1a'
+        return b'\x2b\x0e\x03\x02\x1a' # SHA1
 
 
 class SignatureAlgorithm:
@@ -79,13 +84,31 @@ class SignatureAlgorithm:
     def new(self, key):
         pass
 
+    def padding(self, hash, l=255):
+        pass
+
     def verify(self, hash, signature):
-        # hash = int.from_bytes(hash.digest(), byteorder='big')
-        # signature = int.from_bytes(signature, byteorder='big')
         key = self.new(self._key)
-        #verifier = PKCS1_v1_5.new(self.new(self._key))
-        return key.verify(hash, signature)
+
+        # size of signature with padding
+        modBits = Crypto.Util.number.size(key.n)
+        modBytes = int(modBits/8)
+
+        # generate padding -> https://tools.ietf.org/html/rfc2313#section-8.1
+        lsig = b'\x00' + self.padding(hash, modBytes-1)
+
+        # decrypt signature with public key
+        (pt,) = key.encrypt(signature, 0)
+
+        # add leading 0s
+        while len(pt) < modBytes:
+            pt = b'\x00' + pt
+
+        return lsig == pt
 
 class RSA(SignatureAlgorithm):
+    def padding(self, hash, l=255):
+        return b'\x01' + b'\xff'*(l-2-len(hash)) + b'\x00' + hash
+
     def new(self, key):
         return Crypto.PublicKey.RSA.importKey(key)

@@ -24,9 +24,8 @@ from lib.certificate.asn1structs import x509
 
 
 class X509CertificateStructure:
-    def __init__(self, ber):
+    def __init__(self, stream):
         struct = x509.X509()
-        stream = asn1.InputStream(ber)
         self._x509certificate = struct.parse(stream)
 
     def _root(self):
@@ -80,8 +79,8 @@ class X509CertificateStructure:
 
 
 class X509Certificate(X509CertificateStructure):
-    def __init__(self, ber):
-        super().__init__(ber)
+    def __init__(self, stream):
+        super().__init__(stream)
 
     def getSignatureAlgorithm(self):
         return self._signatureAlgorithm().get('algorithm').getResolvedOID()
@@ -119,6 +118,7 @@ class X509Certificate(X509CertificateStructure):
     # TODO: much more data
 
     def verifySignature(self, issuercert):
+        # find used hash algorithm
         if self.getSignatureAlgorithm() == 'sha256WithRSAEncryption':
             ha = signature.SHA256()
         else:
@@ -126,16 +126,11 @@ class X509Certificate(X509CertificateStructure):
             return False
         h = ha.toBER(self._tbsCertificate().toBER())
 
-        # print(str(binascii.hexlify(h)))
-
+        # find used signature algorithm
         if self.getSignatureAlgorithm() == 'sha256WithRSAEncryption':
             sa = signature.RSA(issuercert._subjectPublicKeyInfo().toBER())
         else:
             # unknown signature algorithm
             return False
 
-        #print(str(h.digest()))
-        # print(issuercert.getSubjectPublicKeyAlgorithm())
-        # print(issuercert.getSubjectPublicKey())
-        # print(self.getSignatureAlgorithm())
-        print(sa.verify(h, self.getSignatureValue()))
+        return sa.verify(h, self.getSignatureValue())
