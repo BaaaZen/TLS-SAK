@@ -15,9 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# temp
-import binascii
-
 from lib.certificate import asn1
 from lib.certificate import signature
 from lib.certificate.asn1structs import x509
