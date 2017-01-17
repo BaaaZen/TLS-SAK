@@ -254,7 +254,7 @@ class BaseElement:
     def parsePacket(self, stream):
         # first parse length
         fb = stream.readByte()
-        if fb is None:
+        if fb == None:
             raise ParserException('missing object length: end of file')
         self._size = bytes([fb])
 
@@ -297,20 +297,22 @@ class BaseElement:
         # if type(stream) is BufferedInputStream:
         #     if stream.isMarked():
         #         stream.unmark()
-        # print('tag compare: ' + hex(rtag) + ' ?= ' + hex(tag))
         if tag != rtag:
             if softfail:
                 return False
             else:
                 raise ParserException('invalid tag found: ' + hex(rtag) + ' instead of ' + hex(tag))
-        subStream = self.parsePacket(stream)
-        if self._logContent:
-            subStream = LoggingInputStream(subStream)
-        self.parseContent(subStream)
-        subStream.skipBytes()
-        if self._logContent:
-            self._rawContent = subStream.getLog()
-        return True
+        try:
+            subStream = self.parsePacket(stream)
+            if self._logContent:
+                subStream = LoggingInputStream(subStream)
+            self.parseContent(subStream)
+            subStream.skipBytes()
+            if self._logContent:
+                self._rawContent = subStream.getLog()
+            return True
+        except ParserException as e:
+            raise ParserException(e.msg + '\ncaught in ' + self.__class__.__name__ + ' with ' + str(stream)) from None
 
     def __str__(self):
         return '(unknown)'
@@ -724,11 +726,17 @@ class Any(BaseElement):
                 else:
                     raise ParserException('invalid tag found: ' + hex(rtag) + ' instead of ' + hex(tag))
 
-        subStream = LoggingInputStream(self.parsePacket(stream))
-        self.parseContent(subStream)
-        subStream.skipBytes()
-        self._rawContent = subStream.getLog()
-        return True
+        try:
+            subStream = LoggingInputStream(self.parsePacket(stream))
+            self.parseContent(subStream)
+            subStream.skipBytes()
+            self._rawContent = subStream.getLog()
+            return True
+        except ParserException as e:
+            if softfail:
+                return False
+            else:
+                raise ParserException(e.msg + '\ncaught in ' + self.__class__.__name__ + ' with ' + str(stream)) from None
 
     def decodeAs(self, c):
         self._element = c()
@@ -759,16 +767,19 @@ class Choice(ConstructedElement):
 
     def parse(self, stream, softfail=False, tag=None):
         stream = BufferedInputStream(stream)
-        for item in self._parseSubItems:
-            stream.mark()
-            psucc = item['subElement'].parse(stream, softfail=True)
+        try:
+            for item in self._parseSubItems:
+                stream.mark()
+                psucc = item['subElement'].parse(stream, softfail=True)
 
-            if psucc:
-                self._item = item['subElement']
-                return True
-            else:
-                stream.goBack()
-                continue
+                if psucc:
+                    self._item = item['subElement']
+                    return True
+                else:
+                    stream.goBack()
+                    continue
+        except ParserException as e:
+            raise ParserException(e.msg + '\ncaught in ' + self.__class__.__name__ + ' with ' + str(stream)) from None
 
         raise ParserException('parser error: no valid choice found')
 

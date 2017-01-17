@@ -17,17 +17,10 @@
 
 # generic imports
 import argparse
-#from pyasn1_modules import rfc2459
-#from pyasn1.codec.ber import decoder
-
-# temp
-# import binascii
-
-# from lib.certificate import asn1
-from lib.certificate import certstore
-# from lib.certificate.asn1structs import x509
 
 # TLS SAK imports
+from lib.certificate import certstore
+from lib.certificate import certchain
 from lib.connection import Connection_Exception
 from lib.connection.starttls import Connection_STARTTLS_FTP
 from lib.connection.starttls import Connection_STARTTLS_SMTP
@@ -78,6 +71,8 @@ def main():
 
             for c in server_certificates:
                 temp_store.addCertificateFromBER(c.toBER())
+
+            cc = certchain.CertificateChain(root_store, meta_store, temp_store, temp_store.getCertificateByID(0))
                 #certs += [x509certificate.X509Certificate(c.toBER())]
 
 #            certs[0].verifySignature(certs[1])

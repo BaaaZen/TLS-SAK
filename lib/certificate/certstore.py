@@ -59,10 +59,21 @@ class CertificateStore:
             self._store[hash] = cert
             self._order += [hash]
 
-    def hashSubject(self, msg):
+    @staticmethod
+    def hashSubject(msg):
         m = hashlib.sha256()
         m.update(msg)
         return m.hexdigest()
+
+    def getCertificateByHash(self, hash):
+        if hash in self._store:
+            return self._store[hash]
+        return None
+
+    def getCertificateByID(self, id):
+        if id < 0 or id >= len(self._order):
+            return None
+        return self._store[self._order[id]]
 
     def addCertificateFromFile(self, filename):
         cert = CertificateStore.parseCertificateFromFile(filename)
