@@ -48,6 +48,12 @@ class CertificateStore:
     def parseCertificateFromInputStream(stream):
         return x509certificate.X509Certificate(stream)
 
+    @staticmethod
+    def hashSubject(msg):
+        m = hashlib.sha256()
+        m.update(msg)
+        return m.hexdigest()
+
     def __init__(self):
         self._store = {}
         self._order = []
@@ -58,12 +64,6 @@ class CertificateStore:
         if hash not in self._order:
             self._store[hash] = cert
             self._order += [hash]
-
-    @staticmethod
-    def hashSubject(msg):
-        m = hashlib.sha256()
-        m.update(msg)
-        return m.hexdigest()
 
     def getCertificateByHash(self, hash):
         if hash in self._store:
