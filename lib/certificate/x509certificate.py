@@ -17,6 +17,7 @@
 
 from lib.certificate import asn1
 from lib.certificate import signature
+from lib.certificate import x509extensions
 from lib.certificate.asn1structs import x509
 
 
@@ -124,6 +125,36 @@ class X509StructName:
         return r
 
 
+class X509StructExtensions:
+    def __init__(self, x509cert, extensions):
+        self._x509cert = x509cert
+        self._extList = []
+
+        if type(extensions) is not asn1.SequenceOf:
+            raise X509StructureException('Extensions structure root is ' + name.__class__.__name__ + ' instead of SequenceOf')
+
+        for extension in extensions:
+            if type(extension) is not asn1.Sequence:
+                raise X509StructureException('Extension structure root is ' + name.__class__.__name__ + ' instead of Sequence')
+            self._extList += [extension]
+
+    def get(self, key, asOID=False):
+        for ext in self._extList:
+            if asOID:
+                skey = ext.get('extnID').getOID()
+            else:
+                skey = ext.get('extnID').getResolvedOID()
+
+            if skey == key:
+                if ext.get('extnID').getOID() == '2.5.29.17':
+                    # subjectAltName
+                    return x509extensions.X509ExtensionSubjectAltName(x509cert, ext.get('extnValue').getOctetString(), ext.get('critical').isTrue())
+                else:
+                    # TODO: implement more extensions
+                    # TODO: remove exception, just return None
+                    raise Exception('not implemented')
+        return None
+
 
 class X509Certificate(X509CertificateStructure):
     def __init__(self, stream):
@@ -162,6 +193,15 @@ class X509Certificate(X509CertificateStructure):
     def getSubjectPublicKey(self):
         return self._subjectPublicKey().getValue()
 
+    def getIssuerUniqueID(self):
+        pass
+
+    def getSubjectUniqueID(self):
+        pass
+
+    def getExtensions(self):
+        return X509StructExtensions(self, self._extensions())
+
     def isValid(self):
         # check if current time (UTC) is between 'notBefore' and 'notAfter'
         now = datetime.datetime.utcnow()
@@ -179,7 +219,12 @@ class X509Certificate(X509CertificateStructure):
             # there is no common name (CN) in subject of cert
             hostnames += [cnSubject]
 
-        # TODO: append alternative hostnames
+        extensions = self.getExtensions()
+        if extensions != None:
+            extAltNames = extensions.get('2.5.29.17')
+            if extAltNames != None:
+                # TODO: append alternative hostnames
+                pass
 
         for hn in hostnames:
             if hn == hostname:
