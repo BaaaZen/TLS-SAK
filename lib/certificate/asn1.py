@@ -480,11 +480,8 @@ class ObjectIdentifier(BaseElement):
             oid += [second]
 
         while stream.hasMoreBytesToRead():
-            #print('  (setting: ' + str(stream) + ')')
             b = stream.readByte()
-            #print('  (settings: ' + stream.__class__.__name__ + ' / ' + str(stream.hasMoreBytesToRead()) + ' / ' + str(b) + ' / ' + hex(b) + ')')
             if b == None:
-                #print('NONE2: ' + stream.__class__.__name__)
                 raise ParserException('missing content: end of file')
             self._rawContent += bytes([b])
 
@@ -509,6 +506,9 @@ class ObjectIdentifier(BaseElement):
 
         self._oid = '.'.join([str(x) for x in oid])
 
+    def clone(self):
+        return self.__class__(self._resolver)
+
     def getResolvedOID(self, resolver=None):
         if resolver != None:
             return resolver.resolveOID(self._oid)
@@ -518,9 +518,6 @@ class ObjectIdentifier(BaseElement):
 
     def getOID(self):
         return self._oid
-
-    # def __str__(self):
-    #     return 'OBJECT IDENTIFIER'
 
 
 class OctetString(BaseElement):

@@ -4,7 +4,10 @@ from lib.certificate import asn1
 class X509(asn1.ASN1):
     oids = {
         '1.2.840.113549.1.1.1': 'rsaEncryption',
-        '1.2.840.113549.1.1.11': 'sha256WithRSAEncryption'
+        '1.2.840.113549.1.1.11': 'sha256WithRSAEncryption',
+        '2.5.4.3': 'CN',
+        '2.5.4.6': 'C',
+        '2.5.4.10': 'O'
     }
 
     def __init__(self):
