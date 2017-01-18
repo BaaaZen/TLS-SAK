@@ -347,9 +347,6 @@ class BitString(BaseElement):
     def getTagValue(self):
         return 0x03
 
-    def parseContent(self, stream):
-        self._rawContent = stream.readBytes(stream.length())
-
     def getValue(self):
         return self._rawContent
 
@@ -524,18 +521,12 @@ class ObjectIdentifier(BaseElement):
 class OctetString(BaseElement):
     def __init__(self):
         super().__init__()
-        self._content = None
 
     def getTagValue(self):
         return 0x04
 
-    def parseContent(self, stream):
-        self._rawContent = stream.readBytes(stream.length())
-        if self._rawContent is None:
-            raise ParserException('missing content: end of file')
-
     def getOctetString(self):
-        return self._content
+        return self._rawContent
 
     # def __str__(self):
     #     return 'OCTET STRING(' + binascii.hexlify(self._content).decrypt('utf-8') + ')'
@@ -820,25 +811,35 @@ class Choice(ConstructedElement):
             cl._parseSubItems += [it]
         return cl
 
-    def addParseItem(self, name, subElement):
+    def addParseItem(self, name, subElement, index=None):
         item = {}
         item['name'] = name
         item['subElement'] = subElement
+        if index != None:
+            item['index'] = index
 
         self._parseSubItems += [item]
 
     def getChoice(self):
-        return self._item
+        return self._item['subElement']
+
+    def getChoiceName(self):
+        return self._item['name']
 
     def parse(self, stream, softfail=False, tag=None):
         stream = BufferedInputStream(stream)
         try:
             for item in self._parseSubItems:
                 stream.mark()
-                psucc = item['subElement'].parse(stream, softfail=True)
+
+                if 'index' in item:
+                    dtag = item['index'] | 0x80
+                    psucc = item['subElement'].parse(stream, softfail=True, tag=dtag)
+                else:
+                    psucc = item['subElement'].parse(stream, softfail=True)
 
                 if psucc:
-                    self._item = item['subElement']
+                    self._item = item
                     return True
                 else:
                     stream.goBack()
@@ -849,4 +850,4 @@ class Choice(ConstructedElement):
         raise ParserException('parser error: no valid choice found')
 
     def toBER(self):
-        return self._item.toBER()
+        return self.getChoice().toBER()
