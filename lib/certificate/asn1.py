@@ -594,6 +594,12 @@ class DateElement(StringElement):
             self._parsedDate = self._parseDate(self.getString())
         return self._parsedDate
 
+    def getDateUTC(self):
+        return self.getDate().replace(tzinfo=datetime.timezone.utc)
+
+    def getDateLocal(self):
+        return self.getDateUTC().astimezone(tz=None)
+
 
 class UTCTime(DateElement):
     def __init__(self):
@@ -683,9 +689,6 @@ class Sequence(ConstructedElement):
                     dtag |= 0xA0
                 psucc = item['subElement'].parse(stream, softfail=True, tag=dtag)
             else:
-                # print(str(item))
-                # print(str(stream))
-                # print('-----preparse-----')
                 psucc = item['subElement'].parse(stream, softfail=True)
 
             if psucc:

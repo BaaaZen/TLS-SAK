@@ -20,6 +20,14 @@ from lib.certificate import signature
 from lib.certificate.asn1structs import x509
 
 
+class X509StructureException(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return 'X509 Structure Exception: ' + str(self.msg)
+
+
 class X509CertificateStructure:
     def __init__(self, stream):
         self._struct = x509.X509()
@@ -41,13 +49,13 @@ class X509CertificateStructure:
         return self._tbsCertificate().get('signature')
 
     def _issuer(self):
-        return self._tbsCertificate().get('issuer').getChoice()
+        return self._tbsCertificate().get('issuer')
 
     def _validity(self):
         return self._tbsCertificate().get('validity')
 
     def _subject(self):
-        return self._tbsCertificate().get('subject').getChoice()
+        return self._tbsCertificate().get('subject')
 
     def _subjectPublicKeyInfo(self):
         return self._tbsCertificate().get('subjectPublicKeyInfo')
@@ -74,26 +82,52 @@ class X509CertificateStructure:
         return self._root().get('signatureValue')
 
 
+class X509StructName:
+    def __init__(self, x509cert, name):
+        self._kvData = []
+
+        if type(name) is not asn1.Choice:
+            raise X509StructureException('Name structure root is ' + name.__class__.__name__ + ' instead of Choice')
+
+        rdnsequence = name.getChoice()
+        if type(rdnsequence) is not asn1.SequenceOf:
+            raise X509StructureException('RDNSequence structure root is ' + name.__class__.__name__ + ' instead of SequenceOf')
+
+        for relativedistinguishedname in rdnsequence:
+            if type(relativedistinguishedname) is not asn1.SetOf:
+                raise X509StructureException('RelativeDistinguishedName structure root is ' + name.__class__.__name__ + ' instead of SetOf')
+            for attributetypeandvalue in relativedistinguishedname:
+                if type(attributetypeandvalue) is not asn1.Sequence:
+                    raise X509StructureException('AttributeTypeAndValue structure root is ' + name.__class__.__name__ + ' instead of Sequence')
+                if not attributetypeandvalue.get('value').hasDecoder():
+                    attributetypeandvalue.get('value').setDecoder(x509cert._struct.pDirectoryString())
+                self._kvData += [attributetypeandvalue]
+
+    def get(self, key, asOID=False):
+        for kv in self._kvData:
+            if asOID:
+                skey = kv.get('type').getOID()
+            else:
+                skey = kv.get('type').getResolvedOID()
+
+            if skey == key:
+                return kv.get('value').getElement().getChoice().getString()
+        return None
+
+    def __str__(self):
+        r = ''
+        for item in self._kvData:
+            rs = item.get('type').getResolvedOID() + '=' + item.get('value').getElement().getChoice().getString()
+            if r != '':
+                r += '/'
+            r += rs
+        return r
+
+
 
 class X509Certificate(X509CertificateStructure):
     def __init__(self, stream):
         super().__init__(stream)
-
-    def _resolveNameObject(self, name):
-        if type(name) is not asn1.SequenceOf:
-            return None
-        r = ''
-        for seqRDNS in name:
-            for item in seqRDNS:
-                if type(item) is not asn1.Sequence:
-                    continue
-                if not item.get('value').hasDecoder():
-                    item.get('value').setDecoder(self._struct.pDirectoryString())
-                rs = item.get('type').getResolvedOID() + '=' + item.get('value').getElement().getChoice().getString()
-                if r != '':
-                    r += '/'
-                r += rs
-        return r
 
     def getSignatureAlgorithm(self):
         return self._signatureAlgorithm().get('algorithm').getResolvedOID()
@@ -111,7 +145,7 @@ class X509Certificate(X509CertificateStructure):
         return self._signature().get('algorithm').getResolvedOID()
 
     def getIssuer(self):
-        return self._resolveNameObject(self._issuer())
+        return X509StructName(self, self._issuer())
 
     def getValidityNotBefore(self):
         return self._validity().get('notBefore').getChoice().getDate()
@@ -120,13 +154,43 @@ class X509Certificate(X509CertificateStructure):
         return self._validity().get('notAfter').getChoice().getDate()
 
     def getSubject(self):
-        return self._resolveNameObject(self._subject())
+        return X509StructName(self, self._subject())
 
     def getSubjectPublicKeyAlgorithm(self):
         return self._subjectPublicKeyAlgorithm().get('algorithm').getResolvedOID()
 
     def getSubjectPublicKey(self):
         return self._subjectPublicKey().getValue()
+
+    def isValid(self):
+        # check if current time (UTC) is between 'notBefore' and 'notAfter'
+        now = datetime.datetime.utcnow()
+        notBefore = self.getValidityNotBefore()
+        notAfter = self.getValidityNotAfter()
+        return notBefore <= now and now <= notAfter
+
+    def isHostnameInCertificate(self, hostname):
+        hostnames = []
+
+        # first check if hostname matches hostname in subject
+        subject = self.getSubject()
+        cnSubject = subject.get('CN')
+        if cnSubject != None:
+            # there is no common name (CN) in subject of cert
+            hostnames += [cnSubject]
+
+        # TODO: append alternative hostnames
+
+        for hn in hostnames:
+            if hn == hostname:
+                # static hostname
+                return True
+            if hn.startswith('*.'):
+                # wildcard!
+                if hostname.endswith(hn[1:]):
+                    return True
+
+        return False
 
     # TODO: much more data
 
@@ -138,6 +202,7 @@ class X509Certificate(X509CertificateStructure):
             ha = signature.SHA1()
         else:
             # unknown hash algorithm
+            print('unknown hash in signature algorithm: ' + self.getSignatureAlgorithm())
             return False
         h = ha.toBER(self._tbsCertificate().toBER())
 
@@ -146,6 +211,7 @@ class X509Certificate(X509CertificateStructure):
             sa = signature.RSA(issuercert._subjectPublicKeyInfo().toBER())
         else:
             # unknown signature algorithm
+            print('unknown signature algorithm: ' + self.getSignatureAlgorithm())
             return False
 
         return sa.verify(h, self.getSignatureValue())

@@ -90,8 +90,8 @@ class CertificateChain:
     def _verifyChain(self):
         for item in self._chainList:
             v = item.cert.verifySignature(item.issuer)
-            print('cert: ' + item.cert.getSubject())
-            print('issuer: ' + item.issuer.getSubject())
+            print('cert: ' + str(item.cert.getSubject()))
+            print('issuer: ' + str(item.issuer.getSubject()))
             print('valid notBefore: ' + str(item.cert.getValidityNotBefore()))
             print('valid notAfter: ' + str(item.cert.getValidityNotAfter()))
             print('verified: ' + str(v))
