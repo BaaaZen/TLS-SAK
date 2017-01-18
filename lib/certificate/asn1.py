@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import binascii
+import datetime
 
 class ParserException(Exception):
     def __init__(self, msg):
@@ -580,20 +581,40 @@ class UTF8String(StringElement):
         return 0x0c
 
 
-class UTCTime(BaseElement):
+class DateElement(StringElement):
+    def __init__(self):
+        super().__init__()
+        self._parsedDate = None
+
+    def _parseDate(self, s):
+        pass
+
+    def getDate(self):
+        if self._parsedDate == None:
+            self._parsedDate = self._parseDate(self.getString())
+        return self._parsedDate
+
+
+class UTCTime(DateElement):
     def __init__(self):
         super().__init__()
 
     def getTagValue(self):
         return 0x17
 
+    def _parseDate(self, s):
+        return datetime.datetime.strptime(s, '%y%m%d%H%M%SZ')
 
-class GeneralizedTime(BaseElement):
+
+class GeneralizedTime(DateElement):
     def __init__(self):
         super().__init__()
 
     def getTagValue(self):
         return 0x18
+
+    def _parseDate(self, s):
+        return datetime.datetime.strptime(s, '%Y%m%d%H%M%SZ')
 
 
 class Sequence(ConstructedElement):

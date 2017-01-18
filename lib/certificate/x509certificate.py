@@ -114,10 +114,10 @@ class X509Certificate(X509CertificateStructure):
         return self._resolveNameObject(self._issuer())
 
     def getValidityNotBefore(self):
-        pass
+        return self._validity().get('notBefore').getChoice().getDate()
 
     def getValidityNotAfter(self):
-        pass
+        return self._validity().get('notAfter').getChoice().getDate()
 
     def getSubject(self):
         return self._resolveNameObject(self._subject())
