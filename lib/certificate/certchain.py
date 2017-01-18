@@ -65,6 +65,9 @@ class CertificateChain:
                 ce.isIssuerMissing = True
                 if self._intermediateStore != None:
                     ce.issuer = self._findCertificate(self._intermediateStore, hash)
+            else:
+                # add intermediate certificate to intermediate cert store
+                self._intermediateStore.addCert(ce.issuer)
         else:
             ce.isIssuerRoot = True
 

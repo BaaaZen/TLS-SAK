@@ -64,8 +64,8 @@ def main():
 
 
             temp_store = certstore.CertificateStore()
-            root_store = certstore.CertificateStore()
-            meta_store = certstore.CertificateStore()
+            root_store = certstore.CertificateStore(cacheDir='cache/certs/root', cachePerFile=True)
+            meta_store = certstore.CertificateStore(cacheDir='cache/certs/intermediate', cachePerFile=False)
 
             root_store.addCertificatesFromDirectory('/etc/ssl/certs/')
 

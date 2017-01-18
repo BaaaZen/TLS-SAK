@@ -19,6 +19,7 @@ import base64
 import hashlib
 import os
 import os.path
+import pickle
 
 from lib.certificate import asn1
 from lib.certificate import x509certificate
@@ -54,16 +55,48 @@ class CertificateStore:
         m.update(msg)
         return m.hexdigest()
 
-    def __init__(self):
+    def __init__(self, cacheDir=None, cachePerFile=True):
         self._store = {}
         self._order = []
+        self._cacheDir = cacheDir
+        self._cachePerFile = cachePerFile
 
-    def _addCert(self, cert):
+        self._validateCacheDir(cacheDir)
+
+    def _validateCacheDir(self, dir):
+        if dir == None:
+            return
+        if not os.path.exists(dir):
+            self._validateCacheDir(os.path.abspath(os.path.join(dir, os.pardir)))
+            os.mkdir(dir)
+        if not os.path.isdir(dir):
+            raise Exception('invalid directory for certificate cache: ' + dir + ' is not a directory!')
+
+    def _saveCache(self):
+        if self._cacheDir == None or self._cachePerFile:
+            return
+        filename = os.path.join(self._cacheDir, 'certs.cache')
+        # print('saving cache to ' + filename)
+        with open(filename, 'wb') as f:
+            pickle.dump([self._store, self._order], f)
+
+    def _loadCache(self):
+        if self._cacheDir == None or self._cachePerFile:
+            return
+
+        filename = os.path.join(self._cacheDir, 'certs.cache')
+        if not os.path.exists(filename) or not os.path.isfile(filename):
+            return
+        with open(filename, 'rb') as f:
+            [self._store, self._order] = pickle.load(f)
+
+    def addCert(self, cert):
         # hash subject -> cert._subject().toBER()
         hash = self.hashSubject(cert._subject().toBER())
         if hash not in self._order:
             self._store[hash] = cert
             self._order += [hash]
+            self._saveCache()
 
     def getCertificateByHash(self, hash):
         if hash in self._store:
@@ -76,17 +109,35 @@ class CertificateStore:
         return self._store[self._order[id]]
 
     def addCertificateFromFile(self, filename):
-        cert = CertificateStore.parseCertificateFromFile(filename)
-        self._addCert(cert)
+        cert = None
+
+        # first check if we have cached the cert as pickle object?
+        if self._cacheDir != None and self._cachePerFile:
+            cachefilename = os.path.join(self._cacheDir, 'cert-' + CertificateStore.hashSubject(os.path.abspath(filename).encode('utf-8')) + '.cache')
+            if os.path.exists(cachefilename) and os.path.isfile(cachefilename):
+                with open(cachefilename, 'rb') as f:
+                    cert = pickle.load(f)
+
+        # otherwise (slower) parse certificate
+        if cert == None:
+            print('Importing certificate from ' + str(filename))
+            cert = CertificateStore.parseCertificateFromFile(filename)
+
+        # if necessary store parsed cert as pickle in cache file
+        if self._cacheDir != None and self._cachePerFile:
+            if not os.path.exists(cachefilename):
+                with open(cachefilename, 'wb') as f:
+                    pickle.dump(cert, f)
+
+        self.addCert(cert)
 
     def addCertificatesFromDirectory(self, directory):
         for filename in os.listdir(directory):
             if not os.path.isfile(os.path.join(directory, filename)):
                 continue
             absFilename = os.path.join(directory, filename)
-            print('Importing certificate from ' + str(absFilename))
             self.addCertificateFromFile(absFilename)
 
     def addCertificateFromBER(self, ber):
         cert = CertificateStore.parseCertificateFromBER(ber)
-        self._addCert(cert)
+        self.addCert(cert)
