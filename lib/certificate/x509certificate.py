@@ -134,13 +134,15 @@ class X509Certificate(X509CertificateStructure):
         # find used hash algorithm
         if self.getSignatureAlgorithm() == 'sha256WithRSAEncryption':
             ha = signature.SHA256()
+        elif self.getSignatureAlgorithm() == 'sha1WithRSAEncryption':
+            ha = signature.SHA1()
         else:
             # unknown hash algorithm
             return False
         h = ha.toBER(self._tbsCertificate().toBER())
 
         # find used signature algorithm
-        if self.getSignatureAlgorithm() == 'sha256WithRSAEncryption':
+        if self.getSignatureAlgorithm() in ['sha1WithRSAEncryption', 'sha256WithRSAEncryption']:
             sa = signature.RSA(issuercert._subjectPublicKeyInfo().toBER())
         else:
             # unknown signature algorithm

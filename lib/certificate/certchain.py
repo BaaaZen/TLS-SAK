@@ -27,6 +27,7 @@ class CertificateChainEntry:
         self.isStart = False
         self.isIssuerRoot = False
         self.isIssuerMissing = False
+        self.isSelfSigned = False
 
 
 class CertificateChain:
@@ -51,25 +52,30 @@ class CertificateChain:
         ce.isStart = isStart
         self._chainList += [ce]
 
-        hash = certstore.CertificateStore.hashSubject(cert._issuer().toBER())
-
-        ce.issuer = None
-        if self._rootStore != None:
-            ce.issuer = self._findCertificate(self._rootStore, hash)
-        if ce.issuer == None:
-            # not in root store
-            if self._currentStore != None:
-                ce.issuer = self._findCertificate(self._currentStore, hash)
-            if ce.issuer == None:
-                # not in current store
-                ce.isIssuerMissing = True
-                if self._intermediateStore != None:
-                    ce.issuer = self._findCertificate(self._intermediateStore, hash)
-            else:
-                # add intermediate certificate to intermediate cert store
-                self._intermediateStore.addCert(ce.issuer)
+        if cert._subject().toBER() == cert._issuer().toBER():
+            # this certificate is self signed!
+            ce.isSelfSigned = True
+            ce.issuer = cert
         else:
-            ce.isIssuerRoot = True
+            hash = certstore.CertificateStore.hashSubject(cert._issuer().toBER())
+
+            ce.issuer = None
+            if self._rootStore != None:
+                ce.issuer = self._findCertificate(self._rootStore, hash)
+            if ce.issuer == None:
+                # not in root store
+                if self._currentStore != None:
+                    ce.issuer = self._findCertificate(self._currentStore, hash)
+                if ce.issuer == None:
+                    # not in current store
+                    ce.isIssuerMissing = True
+                    if self._intermediateStore != None:
+                        ce.issuer = self._findCertificate(self._intermediateStore, hash)
+                else:
+                    # add intermediate certificate to intermediate cert store
+                    self._intermediateStore.addCert(ce.issuer)
+            else:
+                ce.isIssuerRoot = True
 
         if ce.issuer != None:
             self._processCertificate(ce.issuer)
@@ -85,6 +91,7 @@ class CertificateChain:
         for item in self._chainList:
             v = item.cert.verifySignature(item.issuer)
             print('cert: ' + item.cert.getSubject())
+            print('issuer: ' + item.issuer.getSubject())
             print('valid notBefore: ' + str(item.cert.getValidityNotBefore()))
             print('valid notAfter: ' + str(item.cert.getValidityNotAfter()))
             print('verified: ' + str(v))
