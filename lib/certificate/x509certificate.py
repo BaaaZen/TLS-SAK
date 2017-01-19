@@ -74,7 +74,7 @@ class X509CertificateStructure:
         return self._tbsCertificate().get('subjectUniqueID')
 
     def _extensions(self):
-        return self._tbsCertificate().get('extensions')
+        return self._tbsCertificate().get('extensions').getSelf()
 
     def _signatureAlgorithm(self):
         return self._root().get('signatureAlgorithm')
@@ -131,11 +131,11 @@ class X509StructExtensions:
         self._extList = []
 
         if type(extensions) is not asn1.SequenceOf:
-            raise X509StructureException('Extensions structure root is ' + name.__class__.__name__ + ' instead of SequenceOf')
+            raise X509StructureException('Extensions structure root is ' + extensions.__class__.__name__ + ' instead of SequenceOf')
 
         for extension in extensions:
             if type(extension) is not asn1.Sequence:
-                raise X509StructureException('Extension structure root is ' + name.__class__.__name__ + ' instead of Sequence')
+                raise X509StructureException('Extension structure root is ' + extension.__class__.__name__ + ' instead of Sequence')
             self._extList += [extension]
 
     def get(self, key, asOID=False):
@@ -146,9 +146,9 @@ class X509StructExtensions:
                 skey = ext.get('extnID').getResolvedOID()
 
             if skey == key:
-                if ext.get('extnID').getOID() == '2.5.29.17':
+                if ext.get('extnID').getOID() == x509extensions.X509ExtensionSubjectAltName.getOID():
                     # subjectAltName
-                    return x509extensions.X509ExtensionSubjectAltName(x509cert, ext.get('extnValue').getOctetString(), ext.get('critical').isTrue())
+                    return x509extensions.X509ExtensionSubjectAltName(self._x509cert, ext.get('extnValue').getOctetString(), ext.get('critical').isTrue())
                 else:
                     # TODO: implement more extensions
                     # TODO: remove exception, just return None
@@ -221,10 +221,10 @@ class X509Certificate(X509CertificateStructure):
 
         extensions = self.getExtensions()
         if extensions != None:
-            extAltNames = extensions.get('2.5.29.17')
+            extAltNames = extensions.get(x509extensions.X509ExtensionSubjectAltName.getOID(), asOID=True)
             if extAltNames != None:
-                # TODO: append alternative hostnames
-                pass
+                # append alternative hostnames
+                hostnames += extAltNames.getNames()
 
         for hn in hostnames:
             if hn == hostname:

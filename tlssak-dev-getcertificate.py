@@ -73,6 +73,8 @@ def main():
                 temp_store.addCertificateFromBER(c.toBER())
 
             cc = certchain.CertificateChain(root_store, meta_store, temp_store, temp_store.getCertificateByID(0))
+            baseCert = cc.getBaseCert().cert
+            print('hostname: ' + str(baseCert.isHostnameInCertificate('www.rbtsec.de')))
                 #certs += [x509certificate.X509Certificate(c.toBER())]
 
 #            certs[0].verifySignature(certs[1])

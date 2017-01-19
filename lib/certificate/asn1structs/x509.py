@@ -157,12 +157,12 @@ class X509(asn1.ASN1):
 
     def pOtherName(self):
         othername = asn1.Sequence()
-        othername.addParserItem('type-id', asn1.ObjectIdentifier())
-        othername.addParserItem('value', asn1.Any(), index=0, explicit=True)
+        othername.addParseItem('type-id', asn1.ObjectIdentifier())
+        othername.addParseItem('value', asn1.Any(), index=0, explicit=True)
         return othername
 
     def pEDIPartyName(self):
         edipartyname = asn1.Sequence()
-        edipartyname.addParserItem('nameAssigner', self.pDirectoryString(), index=0, implicit=True, optional=True)
-        edipartyname.addParserItem('partyName', self.pDirectoryString(), index=1, implicit=True)
+        edipartyname.addParseItem('nameAssigner', self.pDirectoryString(), index=0, implicit=True, optional=True)
+        edipartyname.addParseItem('partyName', self.pDirectoryString(), index=1, implicit=True)
         return edipartyname

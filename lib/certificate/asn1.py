@@ -244,6 +244,10 @@ class BaseElement:
         # abstract method, needs to be implemented by each object type
         pass
 
+    def setValue(self, v):
+        # abstract method, needs to be implemented by each object type
+        pass
+
     def parseContent(self, stream):
         # abstract method, needs to be implemented by each object type
         pass
@@ -251,6 +255,9 @@ class BaseElement:
     def clone(self):
         # abstract method
         return self.__class__()
+
+    def getSelf(self):
+        return self
 
     def parsePacket(self, stream):
         # first parse length
@@ -315,8 +322,8 @@ class BaseElement:
         except ParserException as e:
             raise ParserException(e.msg + '\ncaught in ' + self.__class__.__name__ + ' with ' + str(stream)) from None
 
-    def __str__(self):
-        return '(unknown)'
+    # def __str__(self):
+    #     return '(unknown)'
 
 
 class ConstructedElement(BaseElement):
@@ -331,10 +338,13 @@ class TransparentElement(ConstructedElement):
         self._subElement = subElement
 
     def clone(self):
-        return self.__class__(subElement.clone())
+        return self.__class__(self._subElement.clone())
 
     def parseContent(self, stream):
         self._subElement.parse(stream)
+
+    def getSelf(self):
+        return self._subElement.getSelf()
 
     def toBER(self):
         return bytes([self._tag]) + self.toBERsize(self._subElement.toBER())
@@ -361,6 +371,9 @@ class Boolean(BaseElement):
 
     def getTagValue(self):
         return 0x01
+
+    def setValue(self, v):
+        self._value = v
 
     def parseContent(self, stream):
         if stream.length() != 1:
@@ -618,6 +631,7 @@ class Sequence(ConstructedElement):
     def __init__(self):
         super().__init__()
         self._parseSubItems = []
+        self._skipItems = []
         self._itemsOrder = []
         self._items = {}
 
@@ -627,8 +641,13 @@ class Sequence(ConstructedElement):
     def clone(self):
         cl = self.__class__()
         for it in self._parseSubItems:
-            it['subElement'] = it['subElement'].clone()
-            cl._parseSubItems += [it]
+            cit = {}
+            for k in it:
+                if k == 'subElement':
+                    cit[k] = it[k].clone()
+                else:
+                    cit[k] = it[k]
+            cl._parseSubItems += [cit]
         return cl
 
     def addItem(self, subElement):
@@ -687,6 +706,12 @@ class Sequence(ConstructedElement):
                 self._itemsOrder += [item['name']]
             else:
                 if 'optional' in item:
+                    if 'default' in item and item['default'] != None:
+                        item['subElement'].setValue(item['default'])
+                        self._items[item['name']] = item['subElement']
+                        self._itemsOrder += [item['name']]
+                        self._skipItems += [item['name']]
+
                     stream.goBack()
                     continue
                 raise ParserException('parser error: item not found')
@@ -694,6 +719,8 @@ class Sequence(ConstructedElement):
     def toBER(self):
         c = b''
         for item in self._itemsOrder:
+            if item in self._skipItems:
+                continue
             c += self._items[item].toBER()
         return bytes([self._tag]) + self.toBERsize(c)
 
@@ -737,7 +764,6 @@ class SequenceOf(ConstructedElement):
 
     def parseContent(self, stream):
         while stream.hasMoreBytesToRead():
-            # print(str(self._parseTemplateElement))
             item = self._parseTemplateElement.clone()
             item.parse(stream)
             self._items += [item]
@@ -807,8 +833,13 @@ class Choice(ConstructedElement):
     def clone(self):
         cl = self.__class__()
         for it in self._parseSubItems:
-            it['subElement'] = it['subElement'].clone()
-            cl._parseSubItems += [it]
+            cit = {}
+            for k in it:
+                if k == 'subElement':
+                    cit[k] = it[k].clone()
+                else:
+                    cit[k] = it[k]
+            cl._parseSubItems += [cit]
         return cl
 
     def addParseItem(self, name, subElement, index=None):

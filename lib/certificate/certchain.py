@@ -102,3 +102,11 @@ class CertificateChain:
             if item.cert == cert:
                 return True
         return False
+
+    def getBaseCert(self):
+        return self.get(0)
+
+    def get(self, id):
+        if id >= 0 and id < len(self._chainList):
+            return self._chainList[id]
+        return None
