@@ -18,46 +18,30 @@
 # TLS SAK imports
 from lib.connection import Connection_Exception
 from lib.plugin.test import Active_Test_Plugin
-from lib.tls import TLS_VERSIONS
+from lib.plugin.test.base import Parameter_Pretest
 from lib.tls.tlsciphersuites import TLS_CipherSuite_Database
 from lib.tls.tlscompressionmethods import TLS_CompressionMethod_Database
 from lib.tls.tlsconnection import TLS_Connection
 from lib.tls.tlsexceptions import TLS_Alert_Exception
 
 class List_Ciphers_Test(Active_Test_Plugin):
+    def dependencies(self):
+        return [Parameter_Pretest.__name__]
+
     def instancable(self):
         return True
 
     def init(self, storage, args):
         super().init(storage, args)
 
-        sto = storage.get(type(self).__name__)
-
-        # parse protocols
-        if len(args.tlsprotocol) < 1:
-            args.tlsprotocol = ['*']
-
-        protocols = []
-        for pitem in args.tlsprotocol:
-            if pitem == '*':
-                toadd = sorted(list(TLS_VERSIONS.keys()))
-            elif pitem in TLS_VERSIONS.keys():
-                toadd = [pitem]
-            else:
-                toadd = []
-
-            for item in toadd:
-                if item not in protocols:
-                    protocols += [item]
-
-        sto.put('protocols', protocols)
-
     def prepareArguments(self, parser):
-        parser.add_argument('-tp', '--tls-protocol', default=[], help='choose protocol to connect with', choices=list(TLS_VERSIONS.keys()) + ['*'], dest='tlsprotocol', action='append')
+        pass
 
     def execute(self, connection, storage):
+        basic_sto = storage.get(Parameter_Pretest.__name__)
+        protocols = basic_sto.get('protocols.available', [])
+
         sto = storage.get(type(self).__name__)
-        protocols = sto.get('protocols', [])
 
         # connect and test
         for protocol in protocols:
@@ -99,35 +83,15 @@ class Check_Honor_Cipher_Order_Test(Active_Test_Plugin):
     def init(self, storage, args):
         super().init(storage, args)
 
-        sto = storage.get(type(self).__name__)
-
-        # parse protocols
-        if len(args.tlsprotocol) < 1:
-            args.tlsprotocol = ['*']
-
-        protocols = []
-        for pitem in args.tlsprotocol:
-            if pitem == '*':
-                toadd = sorted(list(TLS_VERSIONS.keys()))
-            elif pitem in TLS_VERSIONS.keys():
-                toadd = [pitem]
-            else:
-                toadd = []
-
-            for item in toadd:
-                if item not in protocols:
-                    protocols += [item]
-
-        sto.put('protocols', protocols)
-
     def prepareArguments(self, parser):
         pass
 
     def execute(self, connection, storage):
-        sto = storage.get(type(self).__name__)
-        protocols = sto.get('protocols', [])
-
+        basic_sto = storage.get(Parameter_Pretest.__name__)
         cl_sto = storage.get(List_Ciphers_Test.__name__)
+        sto = storage.get(type(self).__name__)
+
+        protocols = basic_sto.get('protocols.available', [])
 
         # connect and test
         for protocol in protocols:
