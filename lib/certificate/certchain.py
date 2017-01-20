@@ -89,9 +89,13 @@ class CertificateChain:
 
     def _verifyChain(self):
         for item in self._chainList:
-            v = item.cert.verifySignature(item.issuer)
+            if item.issuer != None:
+                v = item.cert.verifySignature(item.issuer)
+            else:
+                v = False
             print('cert: ' + str(item.cert.getSubject()))
-            print('issuer: ' + str(item.issuer.getSubject()))
+            if item.issuer != None:
+                print('issuer: ' + str(item.issuer.getSubject()))
             print('valid notBefore: ' + str(item.cert.getValidityNotBefore()))
             print('valid notAfter: ' + str(item.cert.getValidityNotAfter()))
             print('verified: ' + str(v))
