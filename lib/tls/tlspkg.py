@@ -295,7 +295,7 @@ class TLS_Handshake_pkg_ClientHello(TLS_Handshake_pkg):
         if type(self.extensions) is not list:
             self.extensions = []
         for ext in self.extensions:
-            if type(ext) is not TLS_Extension:
+            if not issubclass(type(ext), TLS_Extension):
                 raise TLS_Exception('invalid item in extensions in client hello package: ' + type(ext))
 
         v = TLS_VERSIONS[self.version]

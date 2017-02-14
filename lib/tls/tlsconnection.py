@@ -20,6 +20,7 @@ from lib.connection import Connection
 from lib.tls import TLS_VERSIONS
 from lib.tls.tlsparameter import TLS_CipherSuite
 from lib.tls.tlsparameter import TLS_CompressionMethod
+from lib.tls.tlsparameter import TLS_Extension
 from lib.tls.tlspkg import TLS_pkg
 from lib.tls.tlspkg import TLS_pkg_Alert
 from lib.tls.tlspkg import TLS_pkg_Handshake
@@ -42,6 +43,7 @@ class TLS_Connection:
         self.buffer = b''
         self.cipher_suites = []
         self.compression_methods = []
+        self.extensions = []
         self.state = None
 
     # ---- connection property setters ----
@@ -64,6 +66,16 @@ class TLS_Connection:
                 raise TLS_Exception('compression_methods has to be a list of compression methods')
 
         self.compression_methods = compression_methods
+
+    def setAvailableExtensions(self, extensions):
+        # validate parameter
+        if type(extensions) is not list:
+            raise TLS_Exception('extensions has to be a list of extensions')
+        for e in extensions:
+            if not issubclass(type(e), TLS_Extension):
+                raise TLS_Exception('extensions has to be a list of extensions')
+
+        self.extensions = extensions
 
     def setClientProtocolVersion(self, protocol_version):
         # validate parameter
@@ -112,7 +124,7 @@ class TLS_Connection:
 
     # ---- state machine ----
     def connect(self):
-        client_hello = TLS_Handshake_pkg_ClientHello(version=self.client_protocol_version, cipher_suites=self.cipher_suites, compression_methods=self.compression_methods)
+        client_hello = TLS_Handshake_pkg_ClientHello(version=self.client_protocol_version, cipher_suites=self.cipher_suites, compression_methods=self.compression_methods, extensions=self.extensions)
         handshake_client_hello = TLS_pkg_Handshake(self.client_protocol_version, client_hello)
         self.connection.send(handshake_client_hello.serialize())
 
