@@ -24,6 +24,7 @@ from lib.tls.tlsciphersuites import TLS_CipherSuite_Database
 from lib.tls.tlscompressionmethods import TLS_CompressionMethod_Database
 from lib.tls.tlsconnection import TLS_Connection
 from lib.tls.tlsexceptions import TLS_Alert_Exception
+from lib.tls.tlsextensions import TLS_Extension_ServerName
 
 class Fetch_Certificate(Active_Test_Plugin):
     def instancable(self):
@@ -34,9 +35,11 @@ class Fetch_Certificate(Active_Test_Plugin):
 
         sto = storage.get(type(self).__name__)
         sto.put('active', args.certificate)
+        sto.put('sni', args.sni)
 
     def prepareArguments(self, parser):
         parser.add_argument('-c', '--certificate', help='process certificate sent from server', dest='certificate', action='store_true')
+        parser.add_argument('-sn', '--sni', default=[], help='transmit SNI (server name indication)', dest='sni', action='append')
 
     def execute(self, connection, storage):
         basic_sto = storage.get(Parameter_Pretest.__name__)
@@ -46,6 +49,10 @@ class Fetch_Certificate(Active_Test_Plugin):
         if not sto.get('active', False):
             return
 
+        sni_names = sto.get('sni', [])
+        if sni_names is None:
+            sni_names = []
+
         protocol = protocols[0]
         self.output.logInfo('Fetching certificate with ' + protocol + ' ...')
         try:
@@ -54,6 +61,10 @@ class Fetch_Certificate(Active_Test_Plugin):
                 tls_connection.setClientProtocolVersion(protocol)
                 tls_connection.setAvailableCipherSuites(TLS_CipherSuite_Database.getInstance().getAllCipherSuites())
                 tls_connection.setAvailableCompressionMethods(TLS_CompressionMethod_Database.getInstance().getAllCompressionMethods())
+                if len(sni_names) > 0:
+                    # add SNI to TLS extensions
+                    ext_sni = TLS_Extension_ServerName(server_names=sni_names)
+                    tls_connection.setAvailableExtensions([ext_sni])
                 tls_connection.connect()
 
                 server_certificates = tls_connection.getServerCertificates()
